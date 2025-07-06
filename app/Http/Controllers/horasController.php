@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers;
-
 use Illuminate\Http\Request;
 use App\Models\HorasRegistradas;
 
@@ -12,7 +11,16 @@ class horasController extends Controller
         return view("index", ["bebidas" => $horas]);
     }
 
-    $cantidadHoras = $request->post("Cantidad_Horas")
+    public function CalcularHorasRegistradas () {
+        $inicio = date('Y-m-01 00:00:00');
+        $fin = date('Y-m-t 23:59:59');
+
+        $total = HorasRegistradas::where('ID_Persona')
+        ->whereBetween('created_at',[$inicio, $fin])
+        ->suma('Cantidad_Horas');
+    }
+
+    $cantidadHoras = $request->post("Cantidad_Horas");
 
     public function AgregarHorasRegistradas(Request $request){
         $horas = new HorasRegistradas();
@@ -54,4 +62,6 @@ class horasController extends Controller
         $horas = HorasRegistradas::findOrFail($id);
         return view("editar", ["Horas" => $horas]);
     }
+
+
 }
