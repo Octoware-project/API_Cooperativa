@@ -67,5 +67,8 @@ class FacturasController extends Controller
         return view("editar", ["Pago Mensual" => $horas]);
     }
 
-
+    public function CalcularElTotalDeLasFacturas() {
+        $totalPagado = Pago_Mensual::where('ID_Persona', $idPersona)->sum('Monto');
+        return view('Saldo total', compact('Total que ha pagado la persona'));
+    }
 }
