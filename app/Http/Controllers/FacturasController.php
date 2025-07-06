@@ -2,21 +2,19 @@
 
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
-use App\Models\Facturas;
+use App\Models\Pago_Mensual;
 
 class FacturasController extends Controller
 {
     public function Index(){
-        $factua = Pago_Mensual::all();
+        $factura = Pago_Mensual::all();
         return view("index", ["bebidas" => $factura]);
     }
 
-    $archivo = $request->post("Archivo_Comprobante");
-
     public function AgregarPagoMensual(Request $request){
         $factura = new Pago_Mensual();
-        $factura->ID_Persona = $request->post("ID_Persona");
-        $factura->Monto = $request->post("Monto");
+        $factura->ID_Persona = $request->input("ID_Persona");
+        $factura->Monto = $request->input("Monto");
         
 
         if ($request->hasFile('Archivo_Comprobante')) {
@@ -27,7 +25,7 @@ class FacturasController extends Controller
             return back()->withErrors(['Archivo_Comprobante' => 'Debe subir un archivo.']);
         }
         
-        $factura->Fecha_Subida = $request->post("Fecha_Subida");
+        $factura->Fecha_Subida = $request->input("Fecha_Subida");
 
         $factura->save();
         return redirect("/")->with("Todo Correcto", true);
@@ -35,9 +33,8 @@ class FacturasController extends Controller
 
     public function EditarPagoMensual(Request $request){
         $factura = Pago_Mensual::findOrFail($request->id);
-        $factura->ID_Persona = $request->post("ID_Persona");
-        $factura->Monto = $request->post("Monto");
-        $factura->Archivo_Comprobante = $request->post("Mes");
+        $factura->ID_Persona = $request->input("ID_Persona");
+        $factura->Monto = $request->input("Monto");
         
         if ($request->hasFile('Archivo_Comprobante')) {
             $archivo = $request->file('Archivo_Comprobante');
@@ -45,7 +42,7 @@ class FacturasController extends Controller
             $factura->Archivo_Comprobante = $contenido;
         }
 
-        $factura->Fecha_Subida = $request->post("Fecha_Subida");
+        $factura->Fecha_Subida = $request->input("Fecha_Subida");
 
         $factura->save();
         return redirect("/")->with("Pago mensual correctamente editado", true);
@@ -64,11 +61,17 @@ class FacturasController extends Controller
 
     public function BuscarParaEditar(Request $request, $id){
         $factura = Pago_Mensual::findOrFail($id);
-        return view("editar", ["Pago Mensual" => $horas]);
+        return view("editar", ["Pago Mensual" => $factura]);
     }
 
-    public function CalcularElTotalDeLasFacturas() {
+    public function CalcularElTotalDeLasFacturas(Request $request){
+        $idPersona = $request->input('ID_Persona'); // o ->get('ID_Persona')
         $totalPagado = Pago_Mensual::where('ID_Persona', $idPersona)->sum('Monto');
-        return view('Saldo total', compact('Total que ha pagado la persona'));
+        return view('saldo_total', ['total' => $totalPagado]);
+
+        if (!$idPersona) {
+        return back()->withErrors(['ID_Persona' => 'Debe ingresar un ID de persona.']);
+        }
     }
+
 }
