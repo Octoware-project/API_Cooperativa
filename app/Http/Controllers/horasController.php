@@ -11,16 +11,17 @@ class horasController extends Controller
         return view("index", ["bebidas" => $horas]);
     }
 
-    public function CalcularHorasRegistradas () {
+    public function CalcularHorasRegistradas (Request $request) {
+        $id = $request->post("ID_Persona");
         $inicio = date('Y-m-01 00:00:00');
         $fin = date('Y-m-t 23:59:59');
 
-        $total = HorasRegistradas::where('ID_Persona')
-        ->whereBetween('created_at',[$inicio, $fin])
-        ->suma('Cantidad_Horas');
-    }
+        $total = HorasRegistradas::where('ID_Persona', $id)
+            ->whereBetween('created_at', [$inicio, $fin])
+            ->sum('Cantidad_Horas');
 
-    $cantidadHoras = $request->post("Cantidad_Horas");
+        return response()->json(['total_horas' => $total]);
+    }
 
     public function AgregarHorasRegistradas(Request $request){
         $horas = new HorasRegistradas();
@@ -28,23 +29,24 @@ class horasController extends Controller
         $horas->Semana = $request->post("Semana");
         $horas->Cantidad_Horas = $request->post("Cantidad_Horas");
         $horas->Monto_Compensario = $request->post("Monto_Compensario");
-        
+
+        $cantidadHoras = $request->post("Cantidad_Horas");
         if ($cantidadHoras == 0 || $cantidadHoras == null) {
             $horas->Motivo_Falla = $request->post("Motivo_Falla");
             $horas->Tipo_Justificacion = $request->post("Tipo_Justificacion");
         }
         $horas->save();
-        return redirect("/")->with("Todo Correcto", true);
+        return response()->json(["Factura agregada con exito" => true]);
     }
 
-    public function EditarHorasRegistradas(Request $request){
+    public function EditarHorasRegistradas(Request $request){ 
         $horas = HorasRegistradas::findOrFail($request->id);
         $horas->ID_Persona = $request->post("ID_Persona");
         $horas->Semana = $request->post("Semana");
         $horas->Cantidad_Horas = $request->post("Cantidad_Horas");
         $horas->Monto_Compensario = $request->post("Monto_Compensario");
         $horas->save();
-        return redirect("/")->with("Horas Registradas editadas", true);
+        eturn response()->json(["Edición correcta" => true]);
     }
 
     public function EliminarHoras(Request $request, $id){
@@ -54,8 +56,8 @@ class horasController extends Controller
     }
 
     public function MostrarHorasRegistradas(Request $request, $id){
-        $horas = HorasRegistradas::findOrFail($id); 
-        return view("mostrarDetalles", ["HorasRegistradas" => $horas]);
+        $horas = HorasRegistradas::findOrFail($id);
+        return response()->json($horas);
     }
 
     public function BuscarParaEditar(Request $request, $id){
