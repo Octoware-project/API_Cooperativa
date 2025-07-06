@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->id("ID_Personas");
             $table->integer("Cantidad_Horas");
+            $table->string("Motivo_Falla")->nullable();
+            $table->string("Tipo_Justificacion")->nullable();
             $table->integer("Monto_Compensario");
             $table->softDeletes();
             $table->timestamps();
