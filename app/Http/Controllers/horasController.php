@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\HorasRegistradas;
+use App\Models\Conexion;
 
 class horasController extends Controller
 {
