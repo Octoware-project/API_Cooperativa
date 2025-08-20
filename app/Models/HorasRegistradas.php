@@ -7,5 +7,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class HorasRegistradas extends Model
 {
-    use SoftDeletes;
+    protected $table = 'horas';
+
+    protected $fillable = [
+        'ID_Personas',
+        'ID_Registro_Horas',
+        'Semana',
+        'Cantidad_Horas',
+        'Motivo_Falla',
+        'Tipo_Justificacion',
+        'Monto_Compensario',
+    ];
 }
