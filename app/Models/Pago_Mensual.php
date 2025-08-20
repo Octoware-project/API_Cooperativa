@@ -7,5 +7,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Pago_Mensual extends Model
 {
-    use SoftDeletes;
+    protected $table = 'Pago_Mensual';
+
+    protected $fillable = [
+        'ID_Persona',
+        'ID_Pago_Mensual',
+        'Mes',
+        'Monto',
+        'Archivo_Comprobante' => 'null',
+        'Fecha_Subida',
+        'Estado_Pago',
+        'Comprobante_Inicial',
+    ];
+
 }
