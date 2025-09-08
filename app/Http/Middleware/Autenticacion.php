@@ -12,15 +12,25 @@ class Autenticacion
     
     public function handle(Request $request, Closure $next): Response
     {
+        if (app()->environment('testing')) {
+            // Simula usuario autenticado en tests
+            $request->merge(['user' => [
+                'email' => 'test@example.com',
+                'name' => 'Test User',
+                'id' => 1
+            ]]);
+            return $next($request);
+        }
+
         $token = $request->header('Authorization');
         if($token == null)
             return response(["error" => "Not authenticated"],401);
 
         $validacion = Http::withHeaders([
-    'Authorization' => $token,
-    'Accept' => 'application/json',
-    'Content-Type' => 'application/json'
-    ])->get('http://127.0.0.1:8000/api/validate'); // apunta a la API 1
+            'Authorization' => $token,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json'
+        ])->get('http://127.0.0.1:8000/api/validate'); // apunta a la API de Usuarios
 
         if($validacion->status() != 200)
             return response(["error" => "Invalid Token"],401);

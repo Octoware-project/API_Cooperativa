@@ -12,15 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('Pago_Mensual', function (Blueprint $table) {
-            $table->string("mail");
+            $table->id();
+            $table->string("email");
             $table->unsignedBigInteger("ID_Pago_Mensual")->unique();
             $table->string("Mes")->nullable();
             $table->decimal("Monto");
             $table->binary("Archivo_Comprobante")->nullable();
             $table->date("Fecha_Subida");
-            $table->binary("Estado_Pago")->nullable();
-            $table->binary("Comprobante_Inicial")->nullable();
-
+            $table->string("Estado_Pago")->nullable();
+            $table->string("Comprobante_Inicial")->nullable();
+            $table->string("tipo_pago")->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

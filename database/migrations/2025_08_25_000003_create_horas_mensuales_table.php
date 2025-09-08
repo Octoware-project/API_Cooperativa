@@ -9,14 +9,14 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::create('Horas_Mensuales', function (Blueprint $table) {
-            $table->string("mail");
-            $table->integer("ID_Registro_Horas")->unique();
-            $table->string("Semana");
-            $table->String("Cantidad_Horas");
-            $table->string("Motivo_Falla")->nullable();
-            $table->string("Tipo_Justificacion")->nullable();
-            $table->integer("Monto_Compensario");
+        Schema::create('horas_mensuales', function (Blueprint $table) {
+            $table->id();
+            $table->string('email');
+            $table->integer('Semana');
+            $table->integer('Cantidad_Horas');
+            $table->string('Motivo_Falla')->nullable();
+            $table->string('Tipo_Justificacion')->nullable();
+            $table->float('Monto_Compensario', 10, 2);
             $table->softDeletes();
             $table->timestamps();
         });
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('Horas_Mensuales');
+    Schema::dropIfExists('horas_mensuales');
     }
 };

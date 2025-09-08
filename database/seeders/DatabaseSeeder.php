@@ -19,5 +19,8 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        // Llamar al seeder de facturas y pagos
+        $this->call(Facturas_y_Pagos::class);
     }
 }

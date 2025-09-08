@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Horas_Mensuales extends Model
 {
-    use SoftDeletes;
-    protected $table = 'Horas_Mensuales';
+    use HasFactory, SoftDeletes;
+    protected $table = 'horas_mensuales';
     protected $fillable = [
-        'mail',
-        'ID_Registro_Horas',
+        'email',
         'Semana',
         'Cantidad_Horas',
         'Motivo_Falla',
