@@ -58,7 +58,7 @@ class FacturasController extends Controller
         if (!empty($anio)) {
             $anioNum = intval($anio);
             if ($anioNum > 1900 && $anioNum < 2100) {
-                $query->whereYear('created_at', '<=', $anioNum);
+                $query->whereYear('created_at', $anioNum);
             }
         }
 
