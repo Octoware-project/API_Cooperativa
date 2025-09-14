@@ -13,14 +13,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-        // Llamar al seeder de facturas y pagos
-        $this->call(Facturas_y_Pagos::class);
+    // Llamar al seeder de facturas y pagos
+    $this->call(Facturas_y_Pagos::class);
+    $this->call(HorasMensualesSeeder::class);
     }
 }

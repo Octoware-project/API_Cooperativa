@@ -12,13 +12,15 @@ return new class extends Migration
         Schema::create('horas_mensuales', function (Blueprint $table) {
             $table->id();
             $table->string('email');
-            $table->integer('Semana');
-            $table->integer('Cantidad_Horas');
+            $table->integer('anio');
+            $table->integer('mes');
+            $table->integer('dia');
+            $table->integer('Cantidad_Horas')->nullable();
             $table->string('Motivo_Falla')->nullable();
             $table->string('Tipo_Justificacion')->nullable();
-            $table->float('Monto_Compensario', 10, 2);
-            $table->softDeletes();
+            $table->float('Monto_Compensario', 10, 2)->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

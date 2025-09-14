@@ -13,7 +13,9 @@ class Horas_MensualesFactory extends Factory
     {
         return [
             'email' => $this->faker->unique()->safeEmail(),
-            'Semana' => $this->faker->numberBetween(1, 4),
+            'anio' => $this->faker->year(),
+            'mes' => $this->faker->numberBetween(1, 12),
+            'dia' => $this->faker->numberBetween(1, 28),
             'Cantidad_Horas' => $this->faker->numberBetween(10, 60),
             'Motivo_Falla' => $this->faker->optional()->sentence(),
             'Tipo_Justificacion' => $this->faker->optional()->word(),

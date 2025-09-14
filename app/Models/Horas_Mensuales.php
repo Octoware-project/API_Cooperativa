@@ -12,10 +12,14 @@ class Horas_Mensuales extends Model
     protected $table = 'horas_mensuales';
     protected $fillable = [
         'email',
-        'Semana',
+        'anio',
+        'mes',
+        'dia',
         'Cantidad_Horas',
         'Motivo_Falla',
         'Tipo_Justificacion',
         'Monto_Compensario',
+        'created_at',
+        'updated_at',
     ];
 }

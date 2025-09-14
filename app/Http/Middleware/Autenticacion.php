@@ -24,7 +24,7 @@ class Autenticacion
 
         $token = $request->header('Authorization');
         if($token == null)
-            return response(["error" => "Not authenticated"],401);
+            return response()->json(["error" => "Not authenticated"],401);
 
         $validacion = Http::withHeaders([
             'Authorization' => $token,
@@ -33,9 +33,17 @@ class Autenticacion
         ])->get('http://127.0.0.1:8000/api/validate'); // apunta a la API de Usuarios
 
         if($validacion->status() != 200)
-            return response(["error" => "Invalid Token"],401);
+            return response()->json(["error" => "Invalid Token"],401);
 
-        $request -> merge(['user' => $validacion->json()]);
+        $userData = $validacion->json();
+        if (!isset($userData['user']['email'])) {
+            return response()->json(["error" => "No se pudo obtener el email del usuario autenticado"], 401);
+        }
+        $request->merge(['user' => [
+            'email' => $userData['user']['email'],
+            'name' => $userData['user']['name'],
+            'id' => $userData['user']['id']
+        ]]);
         return $next($request);
     }
 }
