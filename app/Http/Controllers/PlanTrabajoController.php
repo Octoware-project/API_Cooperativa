@@ -15,9 +15,6 @@ class PlanTrabajoController extends Controller
             $userData = (object) $userData;
         }
         $user = \App\Models\User::where('email', $userData->email)->first();
-        if (!$user) {
-            return response()->json(['error' => 'Usuario no encontrado'], 404);
-        }
         $planes = $user->planTrabajos()->get();
         return response()->json($planes, 200);
     }
@@ -30,9 +27,6 @@ class PlanTrabajoController extends Controller
             $userData = (object) $userData;
         }
         $user = \App\Models\User::where('email', $userData->email)->first();
-        if (!$user) {
-            return response()->json(['error' => 'Usuario no encontrado'], 404);
-        }
         $plan = PlanTrabajo::create([
             'user_id' => $user->id,
             'mes' => $request->input('mes'),
@@ -50,9 +44,6 @@ class PlanTrabajoController extends Controller
             $userData = (object) $userData;
         }
         $user = \App\Models\User::where('email', $userData->email)->first();
-        if (!$user) {
-            return response()->json(['error' => 'Usuario no encontrado'], 404);
-        }
         $plan = $user->planTrabajos()->findOrFail($id);
         // Sumar horas del usuario en el mes/año del plan
         $horasCumplidas = $user->horasMensuales()

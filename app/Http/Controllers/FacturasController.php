@@ -23,13 +23,9 @@ class FacturasController extends Controller
                              ->where('email', $email)
                              ->firstOrFail();
             
-            // Devolver la URL pública de Archivo_Comprobante como imagen_comprobante
+            // Devolver la URL del endpoint de comprobante en lugar de storage directo
             if ($factura->Archivo_Comprobante) {
-                $img = $factura->Archivo_Comprobante;
-                if (!str_starts_with($img, 'http')) {
-                    $img = url('storage/' . ltrim($img, '/'));
-                }
-                $factura->imagen_comprobante = $img;
+                $factura->imagen_comprobante = url("api/facturas/{$id}/comprobante");
             } else {
                 $factura->imagen_comprobante = null;
             }
@@ -125,8 +121,8 @@ class FacturasController extends Controller
                 'tipo_pago' => 'required|string|max:50',
                 'Mes' => 'required|string|in:' . implode(',', array_keys(self::MESES)),
                 'Anio' => 'required|integer|min:2000|max:2100',
-                'Estado_Pago' => 'nullable|string|in:Pendiente,Pagado,Cancelado',
-                'Archivo_Comprobante' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:5120' // 5MB max
+                'Estado_Pago' => 'nullable|string|in:Pendiente,Aceptado,Rechazado',
+                'Archivo_Comprobante' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:5120' // Solo imágenes y PDF, 5MB max
             ]);
 
             if ($validator->fails()) {
@@ -180,6 +176,88 @@ class FacturasController extends Controller
                 'error' => 'Error interno del servidor',
                 'mensaje' => 'No se pudo crear la factura'
             ], 500);
+        }
+    }
+
+    // Devuelve la URL del comprobante para acceso directo
+    public function urlComprobante(Request $request, $id)
+    {
+        try {
+            $email = $request->user['email'];
+            $factura = Factura::where('id', $id)
+                             ->where('email', $email)
+                             ->firstOrFail();
+            
+            if (!$factura->Archivo_Comprobante) {
+                return response()->json(['error' => 'No hay comprobante disponible'], 404);
+            }
+
+            // Generar URL completa del comprobante
+            $url = url('storage/' . ltrim($factura->Archivo_Comprobante, '/'));
+            
+            return response()->json([
+                'url' => $url,
+                'filename' => basename($factura->Archivo_Comprobante),
+                'tipo' => pathinfo($factura->Archivo_Comprobante, PATHINFO_EXTENSION)
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Factura no encontrada o sin permisos'], 404);
+        }
+    }
+
+    // Sirve el archivo comprobante directamente con autenticación (para frontend)
+    public function servirComprobante(Request $request, $id)
+    {
+        try {
+            $email = $request->user['email'];
+            $factura = Factura::where('id', $id)
+                             ->where('email', $email)
+                             ->firstOrFail();
+            
+            if (!$factura->Archivo_Comprobante) {
+                abort(404, 'Comprobante no encontrado');
+            }
+
+            $filePath = storage_path('app/public/' . $factura->Archivo_Comprobante);
+            
+            if (!file_exists($filePath)) {
+                abort(404, 'Archivo no encontrado');
+            }
+
+            $mimeType = mime_content_type($filePath);
+            $fileName = basename($factura->Archivo_Comprobante);
+
+            return response()->file($filePath, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="' . $fileName . '"'
+            ]);
+
+        } catch (\Exception $e) {
+            abort(404, 'Comprobante no encontrado');
+        }
+    }
+
+    // Endpoint público para descargar comprobantes (solo para admin/backoffice)
+    public function descargarComprobante($id)
+    {
+        try {
+            $factura = Factura::findOrFail($id);
+            
+            if (!$factura->Archivo_Comprobante) {
+                abort(404, 'Comprobante no encontrado');
+            }
+
+            $filePath = storage_path('app/public/' . $factura->Archivo_Comprobante);
+            
+            if (!file_exists($filePath)) {
+                abort(404, 'Archivo no encontrado');
+            }
+
+            return response()->file($filePath);
+
+        } catch (\Exception $e) {
+            abort(404, 'Comprobante no encontrado');
         }
     }
 

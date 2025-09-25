@@ -11,7 +11,7 @@ class HorasMensualesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_agregar_horas_exito()
+    public function test_agregarHorasExito()
     {
         $payload = [
             'anio' => 2025,
@@ -31,7 +31,7 @@ class HorasMensualesTest extends TestCase
         ]);
     }
 
-    public function test_listar_horas_por_usuario()
+    public function test_listarHorasPorUsuario()
     {
         Horas_Mensuales::factory()->create([
             'email' => 'test@example.com',
@@ -47,7 +47,7 @@ class HorasMensualesTest extends TestCase
             ->assertJsonMissing(['Cantidad_Horas' => 7]);
     }
 
-    public function test_sumar_horas_ultimo_mes()
+    public function test_sumarHorasUltimoMes()
     {
         $now = Carbon::now();
         Horas_Mensuales::factory()->create([
@@ -70,7 +70,7 @@ class HorasMensualesTest extends TestCase
             ->assertJson(['total_horas_ultimo_mes' => 6]);
     }
 
-    public function test_calcular_horas_registradas_por_mes_y_anio()
+    public function test_calcularHorasRegistradasPorMesYAnio()
     {
         Horas_Mensuales::factory()->create([
             'email' => 'test@example.com',
@@ -99,7 +99,7 @@ class HorasMensualesTest extends TestCase
             ->assertJson(['total_horas' => 5]);
     }
 
-    public function test_detalle_horas()
+    public function test_detalleHoras()
     {
         $horas = Horas_Mensuales::factory()->create([
             'email' => 'test@example.com',
@@ -110,7 +110,7 @@ class HorasMensualesTest extends TestCase
             ->assertJsonFragment(['Cantidad_Horas' => 8]);
     }
 
-    public function test_eliminar_horas_menor_24h()
+    public function test_eliminarHorasMenor_24h()
     {
         $horas = Horas_Mensuales::factory()->create([
             'email' => 'test@example.com',
@@ -124,7 +124,7 @@ class HorasMensualesTest extends TestCase
         ]);
     }
 
-    public function test_eliminar_horas_mayor_24h()
+    public function test_eliminarHorasMayor24h()
     {
         $horas = Horas_Mensuales::factory()->create([
             'email' => 'test@example.com',

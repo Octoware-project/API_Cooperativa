@@ -12,7 +12,7 @@ class PlanTrabajoTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_lista_planes_del_usuario()
+    public function test_indexListaPlanesDelUsuario()
     {
         $user = User::factory()->create(['email' => 'test@example.com']);
         $otro = User::factory()->create(['email' => 'otro@ejemplo.com']);
@@ -27,7 +27,7 @@ class PlanTrabajoTest extends TestCase
             ->assertJsonMissing(['user_id' => $otro->id]);
     }
 
-    public function test_store_crea_plan_para_usuario()
+    public function test_storeCreaPlanParaUsuario()
     {
         $user = User::factory()->create(['email' => 'test@example.com']);
         $payload = [
@@ -46,7 +46,7 @@ class PlanTrabajoTest extends TestCase
         ]);
     }
 
-    public function test_progreso_devuelve_horas_cumplidas_y_porcentaje()
+    public function test_progresoDevuelveHorasCumplidasYPorcentaje()
     {
         $user = User::factory()->create(['email' => 'test@example.com']);
         $plan = PlanTrabajo::factory()->create([

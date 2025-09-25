@@ -17,10 +17,6 @@ class Horas_MensualesController extends Controller
             $user = (object) $user;
         }
         
-        if (!$user || !isset($user->email)) {
-            return null;
-        }
-        
         return $user;
     }
 
@@ -30,10 +26,6 @@ class Horas_MensualesController extends Controller
     public function index(Request $request)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
-
         $horas = Horas_Mensuales::where('email', $user->email)->get();
         return response()->json(['horas' => $horas], 200);
     }
@@ -43,10 +35,6 @@ class Horas_MensualesController extends Controller
     public function sumarHorasUltimoMes(Request $request)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
-
         $now = now();
         $inicio = $now->copy()->startOfMonth();
         $fin = $now->copy()->endOfMonth();
@@ -64,10 +52,6 @@ class Horas_MensualesController extends Controller
     public function calcularHorasRegistradas(Request $request) 
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
-
         $mes = $request->input('mes');
         $anio = $request->input('anio', now()->year);
         
@@ -89,9 +73,6 @@ class Horas_MensualesController extends Controller
     public function store(Request $request)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
 
         // Validación de datos requeridos
         $request->validate([
@@ -128,9 +109,6 @@ class Horas_MensualesController extends Controller
     public function agregarJustificacion(Request $request)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
 
         // Validación de datos requeridos para justificación
         $request->validate([
@@ -166,9 +144,6 @@ class Horas_MensualesController extends Controller
     public function update(Request $request, $id)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
 
         // Buscar el registro solo si pertenece al usuario autenticado
         $horasMensuales = Horas_Mensuales::where('id', $id)
@@ -227,9 +202,6 @@ class Horas_MensualesController extends Controller
     public function destroy(Request $request, $id)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
 
         $horasMensuales = Horas_Mensuales::where('id', $id)
             ->where('email', $user->email)
@@ -259,9 +231,6 @@ class Horas_MensualesController extends Controller
     public function show(Request $request, $id)
     {
         $user = $this->getAuthenticatedUser($request);
-        if (!$user) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
 
         $horasMensuales = Horas_Mensuales::where('id', $id)
             ->where('email', $user->email)

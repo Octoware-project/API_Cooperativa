@@ -10,10 +10,10 @@ class FacturasTest extends TestCase
 {
 	use RefreshDatabase;
 
-	public function test_agregar_factura_exito()
+	public function test_agregarFacturaExito()
 	{
 		$payload = [
-			'Monto' => 500,
+			'Monto' => 1000.00,
 			'Estado_Pago' => 'Pendiente',
 			'tipo_pago' => 'Transferencia',
 			'Mes' => 'Enero',
@@ -22,20 +22,21 @@ class FacturasTest extends TestCase
 
 		$response = $this->postJson('/api/facturas', $payload);
 		$response->assertStatus(201)
-			->assertJsonFragment(["Factura agregada con exito" => true]);
+			->assertJsonFragment(['success' => true])
+			->assertJsonFragment(['mensaje' => 'Factura agregada con éxito']);
 
 		$this->assertDatabaseHas('Factura', [
 			'email' => 'test@example.com',
-			'Monto' => 500,
+			'Monto' => 1000.00,
 			'Estado_Pago' => 'Pendiente',
 			'tipo_pago' => 'Transferencia',
 		]);
 	}
 
-	public function test_agregar_factura_monto_demasiado_grande()
+	public function test_AgregarFacturaMontoDemasiadoGrande()
 	{
 		$payload = [
-			'Monto' => 1000000,
+			'Monto' => 1000000.00, // Excede el máximo de 999999.99
 			'Estado_Pago' => 'Pendiente',
 			'tipo_pago' => 'Transferencia',
 			'Mes' => 'Enero',
@@ -43,81 +44,111 @@ class FacturasTest extends TestCase
 		];
 		$response = $this->postJson('/api/facturas', $payload);
 		$response->assertStatus(422)
-			->assertJsonFragment(['error' => 'Un monto demasiado grande']);
+			->assertJsonFragment(['error' => 'Datos de validación incorrectos']);
 	}
 
-	public function test_listar_facturas_por_usuario()
+	public function test_ListarFacturasPorUsuario()
 	{
-		Factura::factory()->create([
+		// Crear facturas usando datos similares a los seeders
+		Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 100,
+			'Monto' => 1000.00,
+			'Estado_Pago' => 'Pendiente',
+			'tipo_pago' => 'Transferencia',
+			'Archivo_Comprobante' => 'comprobantes/test1.pdf'
 		]);
-		Factura::factory()->create([
+		Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 200,
+			'Monto' => 1100.00,
+			'Estado_Pago' => 'Pagado',
+			'tipo_pago' => 'Efectivo',
+			'Archivo_Comprobante' => 'comprobantes/test2.pdf'
 		]);
-		Factura::factory()->create([
+		// Factura de otro usuario que no debe aparecer
+		Factura::create([
 			'email' => 'otro@ejemplo.com',
-			'Monto' => 300,
+			'Monto' => 1200.00,
+			'Estado_Pago' => 'Pendiente',
+			'tipo_pago' => 'Transferencia',
+			'Archivo_Comprobante' => 'comprobantes/test3.pdf'
 		]);
 
 		$response = $this->getJson('/api/facturas');
 		$response->assertStatus(200)
 			->assertJsonCount(2, 'facturas')
-			->assertJsonFragment(['Monto' => 100])
-			->assertJsonFragment(['Monto' => 200])
-			->assertJsonMissing(['Monto' => 300]);
+			->assertJsonFragment(['Monto' => 1000.00])
+			->assertJsonFragment(['Monto' => 1100.00])
+			->assertJsonMissing(['Monto' => 1200.00]);
 	}
 
-	public function test_detalle_factura()
+	public function testDetalleFactura()
 	{
-		$factura = Factura::factory()->create([
+		$factura = Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 150,
-			'Archivo_Comprobante' => 'comprobantes/test.jpg',
+			'Monto' => 1000.00,
+			'Estado_Pago' => 'Pendiente',
+			'tipo_pago' => 'Transferencia',
+			'Archivo_Comprobante' => 'comprobantes/test_comprobante.pdf',
 		]);
 
 		$response = $this->getJson('/api/facturas/' . $factura->id);
 		$response->assertStatus(200)
-			->assertJsonFragment(['Monto' => 150])
+			->assertJsonFragment(['Monto' => 1000.00])
 			->assertJsonStructure(['factura' => ['imagen_comprobante']]);
 	}
 
-	public function test_filtrar_facturas_por_mes_y_anio()
+	public function test_filtrarFacturasPorMesYAnio()
 	{
-		Factura::factory()->create([
+		// Crear facturas con fechas específicas usando datos realistas
+		$factura1 = Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 100,
-			'created_at' => '2024-01-15',
+			'Monto' => 1000.00,
+			'Estado_Pago' => 'Pendiente',
+			'tipo_pago' => 'Transferencia',
 		]);
-		Factura::factory()->create([
+		// Forzar la fecha de created_at después de la creación
+		$factura1->created_at = '2024-01-15 10:00:00';
+		$factura1->save();
+
+		$factura2 = Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 200,
-			'created_at' => '2024-02-10',
+			'Monto' => 1100.00,
+			'Estado_Pago' => 'Pagado',
+			'tipo_pago' => 'Efectivo',
 		]);
-		Factura::factory()->create([
+		$factura2->created_at = '2024-02-10 10:00:00';
+		$factura2->save();
+
+		$factura3 = Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 300,
-			'created_at' => '2023-01-10',
+			'Monto' => 1200.00,
+			'Estado_Pago' => 'Pendiente',
+			'tipo_pago' => 'Transferencia',
 		]);
+		$factura3->created_at = '2023-01-10 10:00:00';
+		$factura3->save();
 
 		$payload = [
 			'mes' => 1,
 			'anio' => 2024
 		];
 		$response = $this->postJson('/api/facturas/filtrar', $payload);
+		
 		$response->assertStatus(200)
 			->assertJsonCount(1, 'facturas')
-			->assertJsonFragment(['Monto' => 100])
-			->assertJsonMissing(['Monto' => 200])
-			->assertJsonMissing(['Monto' => 300]);
+			->assertJsonFragment(['Monto' => 1000])
+			->assertJsonMissing(['Monto' => 1100])
+			->assertJsonMissing(['Monto' => 1200]);
 	}
 
-	public function test_cancelar_factura()
+	public function test_CancelarFactura()
 	{
-		$factura = Factura::factory()->create([
+		$factura = Factura::create([
 			'email' => 'test@example.com',
-			'Monto' => 123,
+			'Monto' => 1000.00,
+			'Estado_Pago' => 'Pendiente',
+			'tipo_pago' => 'Transferencia',
+			'Archivo_Comprobante' => 'comprobantes/test_comprobante.pdf',
 		]);
 
 		$response = $this->deleteJson('/api/facturas/' . $factura->id);

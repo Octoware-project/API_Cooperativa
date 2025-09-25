@@ -28,6 +28,8 @@ Route::middleware([Autenticacion::class])->group(function () {
     // Rutas para Facturas
     Route::post('/facturas', [FacturasController::class, 'agregarFactura']);
     Route::get('/facturas/{id}', [FacturasController::class, 'detalle']);
+    Route::get('/facturas/{id}/url-comprobante', [FacturasController::class, 'urlComprobante']);
+    Route::get('/facturas/{id}/comprobante', [FacturasController::class, 'servirComprobante']);
     Route::delete('/facturas/{id}', [FacturasController::class, 'cancelarFactura']);
     Route::get('/facturas', [FacturasController::class, 'listarFacturasPorUsuario']);
     Route::post('/facturas/filtrar', [FacturasController::class, 'filtrarFacturas']);
