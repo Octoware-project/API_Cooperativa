@@ -7,83 +7,103 @@ use App\Models\Horas_Mensuales;
 
 class Horas_MensualesController extends Controller
 {
-    // Lista todos los registros de horas del usuario autenticado
-    public function listarHorasPorUsuario(Request $request)
+    /**
+     * Obtiene los datos del usuario autenticado desde el request
+     */
+    private function getAuthenticatedUser(Request $request)
     {
         $user = $request->user;
         if (is_array($user)) {
             $user = (object) $user;
         }
+        
         if (!$user || !isset($user->email)) {
+            return null;
+        }
+        
+        return $user;
+    }
+
+    /**
+     * Lista todos los registros de horas del usuario autenticado
+     */
+    public function index(Request $request)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
             return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
         }
-        $email = $user->email;
-        $horas = \App\Models\Horas_Mensuales::where('email', $email)->get();
+
+        $horas = Horas_Mensuales::where('email', $user->email)->get();
         return response()->json(['horas' => $horas], 200);
     }
-    
-    // Suma todas las Cantidad_Horas del último mes para un email
+    /**
+     * Suma todas las horas del mes actual para el usuario autenticado
+     */
     public function sumarHorasUltimoMes(Request $request)
     {
-
-        $user = $request->user;
-        if (is_array($user)) {
-            $user = (object) $user;
-        }
-        if (!$user || !isset($user->email)) {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
             return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
         }
-        $email = $user->email;
+
         $now = now();
         $inicio = $now->copy()->startOfMonth();
         $fin = $now->copy()->endOfMonth();
-        $total = \App\Models\Horas_Mensuales::where('email', $email)
+        
+        $total = Horas_Mensuales::where('email', $user->email)
             ->whereBetween('created_at', [$inicio, $fin])
             ->sum('Cantidad_Horas');
+            
         return response()->json(['total_horas_ultimo_mes' => $total], 200);
     }
-    public function Index(){
-        $user = request()->user;
-        if (is_array($user)) {
-            $user = (object) $user;
-        }
-        if (!$user || !isset($user->email)) {
+
+    /**
+     * Calcula las horas registradas por mes y año
+     */
+    public function calcularHorasRegistradas(Request $request) 
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
             return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
         }
-        $horasMensuales = Horas_Mensuales::where('email', $user->email)->get();
-        return response()->json($horasMensuales, 200);
 
-    }
-
-    public function CalcularHorasRegistradas(Request $request) {
-        $user = $request->user;
-        if (is_array($user)) {
-            $user = (object) $user;
-        }
-        if (!$user || !isset($user->email)) {
-            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
-        }
-        $email = $user->email;
         $mes = $request->input('mes');
         $anio = $request->input('anio', now()->year);
+        
         if (!$mes) {
-            return response()->json(['error' => 'Falta parámetro mes'], 400);
+            return response()->json(['error' => 'El parámetro mes es requerido'], 400);
         }
-        $total = Horas_Mensuales::where('email', $email)
+
+        $total = Horas_Mensuales::where('email', $user->email)
             ->where('mes', $mes)
             ->where('anio', $anio)
             ->sum('Cantidad_Horas');
+            
         return response()->json(['total_horas' => $total], 200);
     }
 
-    public function agregarHoras(Request $request){
-        $user = $request->user;
-        if (is_array($user)) {
-            $user = (object) $user;
-        }
-        if (!$user || !isset($user->email)) {
+    /**
+     * Agrega un nuevo registro de horas
+     */
+    public function store(Request $request)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
             return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
         }
+
+        // Validación de datos requeridos
+        $request->validate([
+            'Cantidad_Horas' => 'required|numeric|min:0|max:24',
+            'dia' => 'nullable|integer|min:1|max:31',
+            'mes' => 'nullable|integer|min:1|max:12',
+            'anio' => 'nullable|integer|min:2000|max:2099',
+            'Monto_Compensario' => 'nullable|numeric|min:0',
+            'Motivo_Falla' => 'nullable|string|max:255',
+            'Tipo_Justificacion' => 'nullable|string|max:255'
+        ]);
+
         $horasMensuales = new Horas_Mensuales();
         $horasMensuales->email = $user->email;
         $horasMensuales->anio = $request->input('anio', now()->year);
@@ -93,35 +113,92 @@ class Horas_MensualesController extends Controller
         $horasMensuales->Monto_Compensario = $request->input('Monto_Compensario');
         $horasMensuales->Motivo_Falla = $request->input('Motivo_Falla');
         $horasMensuales->Tipo_Justificacion = $request->input('Tipo_Justificacion');
+        
         $horasMensuales->save();
-        return response()->json($horasMensuales, 201);
+        
+        return response()->json([
+            'mensaje' => 'Horas agregadas exitosamente',
+            'data' => $horasMensuales
+        ], 201);
     }
 
-    public function AgregarJustificacion(Request $request){
-        $user = $request->user;
-        if (is_array($user)) {
-            $user = (object) $user;
-        }
-        if (!$user || !isset($user->email)) {
+    /**
+     * Agrega una justificación (sin horas)
+     */
+    public function agregarJustificacion(Request $request)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
             return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
         }
+
+        // Validación de datos requeridos para justificación
+        $request->validate([
+            'Motivo_Falla' => 'required|string|max:255',
+            'Tipo_Justificacion' => 'required|string|max:255',
+            'dia' => 'nullable|integer|min:1|max:31',
+            'mes' => 'nullable|integer|min:1|max:12',
+            'anio' => 'nullable|integer|min:2000|max:2099',
+            'Monto_Compensario' => 'nullable|numeric|min:0'
+        ]);
+
         $horasMensuales = new Horas_Mensuales();
         $horasMensuales->email = $user->email;
         $horasMensuales->anio = $request->input('anio', now()->year);
         $horasMensuales->mes = $request->input('mes', now()->month);
         $horasMensuales->dia = $request->input('dia', now()->day);
-        $horasMensuales->Cantidad_Horas = null;
+        $horasMensuales->Cantidad_Horas = null; // Sin horas para justificaciones
         $horasMensuales->Monto_Compensario = $request->input('Monto_Compensario');
         $horasMensuales->Motivo_Falla = $request->input('Motivo_Falla');
         $horasMensuales->Tipo_Justificacion = $request->input('Tipo_Justificacion');
+        
         $horasMensuales->save();
-        return response()->json($horasMensuales, 201);
+        
+        return response()->json([
+            'mensaje' => 'Justificación agregada exitosamente',
+            'data' => $horasMensuales
+        ], 201);
     }
 
-    public function EditarHorasRegistradas(Request $request, $id){
-        $horasMensuales = Horas_Mensuales::findOrFail($id);
+    /**
+     * Edita un registro de horas existente (solo del usuario autenticado)
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
+            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
+        }
+
+        // Buscar el registro solo si pertenece al usuario autenticado
+        $horasMensuales = Horas_Mensuales::where('id', $id)
+            ->where('email', $user->email)
+            ->first();
+
+        if (!$horasMensuales) {
+            return response()->json(['error' => 'Registro no encontrado o no autorizado'], 404);
+        }
+
+        // Validación de datos
+        $request->validate([
+            'Cantidad_Horas' => 'nullable|numeric|min:0|max:24',
+            'dia' => 'nullable|integer|min:1|max:31',
+            'mes' => 'nullable|integer|min:1|max:12',
+            'anio' => 'nullable|integer|min:2000|max:2099',
+            'Monto_Compensario' => 'nullable|numeric|min:0',
+            'Motivo_Falla' => 'nullable|string|max:255',
+            'Tipo_Justificacion' => 'nullable|string|max:255'
+        ]);
+
+        // Actualizar solo los campos enviados
         if ($request->has('dia')) {
             $horasMensuales->dia = $request->input('dia');
+        }
+        if ($request->has('mes')) {
+            $horasMensuales->mes = $request->input('mes');
+        }
+        if ($request->has('anio')) {
+            $horasMensuales->anio = $request->input('anio');
         }
         if ($request->has('Cantidad_Horas')) {
             $horasMensuales->Cantidad_Horas = $request->input('Cantidad_Horas');
@@ -135,33 +212,67 @@ class Horas_MensualesController extends Controller
         if ($request->has('Tipo_Justificacion')) {
             $horasMensuales->Tipo_Justificacion = $request->input('Tipo_Justificacion');
         }
+        
         $horasMensuales->save();
-        return response()->json($horasMensuales, 200);
+        
+        return response()->json([
+            'mensaje' => 'Registro actualizado exitosamente',
+            'data' => $horasMensuales
+        ], 200);
     }
 
-    public function EliminarHoras(Request $request, $id){
-        $user = $request->user;
-        if (is_array($user)) {
-            $user = (object) $user;
-        }
-        if (!$user || !isset($user->email)) {
+    /**
+     * Elimina un registro de horas (solo si tiene menos de 24 horas de creado)
+     */
+    public function destroy(Request $request, $id)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
             return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
         }
-        $horasMensuales = Horas_Mensuales::where('id', $id)->where('email', $user->email)->firstOrFail();
+
+        $horasMensuales = Horas_Mensuales::where('id', $id)
+            ->where('email', $user->email)
+            ->first();
+
+        if (!$horasMensuales) {
+            return response()->json(['error' => 'Registro no encontrado o no autorizado'], 404);
+        }
+
         // Validar antigüedad menor a 24 horas
         if ($horasMensuales->created_at->diffInHours(now()) >= 24) {
-            return response()->json(['error' => 'Solo se pueden cancelar registros con menos de 24 horas de creados'], 403);
+            return response()->json([
+                'error' => 'Solo se pueden eliminar registros con menos de 24 horas de creados'
+            ], 403);
         }
+
         $horasMensuales->delete();
-        return [
-            "mensaje" => "Horas " . $id . " eliminadas"
-        ];  
+        
+        return response()->json([
+            'mensaje' => "Registro de horas $id eliminado exitosamente"
+        ], 200);
     }
 
-    public function Detalle(Request $request, $id){
-        $horasMensuales = Horas_Mensuales::findOrFail($id);
-        return response()->json($horasMensuales, 200);
-    }
+    /**
+     * Muestra el detalle de un registro específico (solo del usuario autenticado)
+     */
+    public function show(Request $request, $id)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        if (!$user) {
+            return response()->json(['error' => 'No se pudo obtener el email del usuario autenticado'], 401);
+        }
 
+        $horasMensuales = Horas_Mensuales::where('id', $id)
+            ->where('email', $user->email)
+            ->first();
+
+        if (!$horasMensuales) {
+            return response()->json(['error' => 'Registro no encontrado o no autorizado'], 404);
+        }
+
+        return response()->json([
+            'data' => $horasMensuales
+        ], 200);
+    }
 }
-
