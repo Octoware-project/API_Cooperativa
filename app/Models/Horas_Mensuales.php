@@ -19,7 +19,76 @@ class Horas_Mensuales extends Model
         'Motivo_Falla',
         'Tipo_Justificacion',
         'Monto_Compensario',
+        'valor_hora_al_momento',
+        'horas_equivalentes_calculadas',
         'created_at',
         'updated_at',
     ];
+
+    protected $casts = [
+        'Cantidad_Horas' => 'integer',
+        'Monto_Compensario' => 'decimal:2',
+        'valor_hora_al_momento' => 'decimal:2',
+        'horas_equivalentes_calculadas' => 'decimal:2',
+    ];
+
+    /**
+     * Obtener las horas equivalentes (reales + justificadas)
+     */
+    public function getHorasEquivalentes()
+    {
+        // Si ya tiene horas equivalentes calculadas (histórico), usar esas
+        if ($this->horas_equivalentes_calculadas !== null) {
+            return $this->horas_equivalentes_calculadas;
+        }
+        
+        $horasReales = $this->Cantidad_Horas ?? 0;
+        
+        // Si tiene monto pero no tiene horas equivalentes calculadas, calcular
+        if ($this->Monto_Compensario && $this->Monto_Compensario > 0) {
+            $valorHora = $this->valor_hora_al_momento ?? ConfiguracionHoras::getValorActual();
+            if ($valorHora > 0) {
+                $horasDeJustificacion = $this->Monto_Compensario / $valorHora;
+                return $horasReales + $horasDeJustificacion;
+            }
+        }
+        
+        return $horasReales;
+    }
+
+    /**
+     * Calcular y fijar las horas equivalentes usando el valor actual
+     */
+    public function calcularYFijarHorasEquivalentes()
+    {
+        $horasReales = $this->Cantidad_Horas ?? 0;
+        
+        if ($this->Monto_Compensario && $this->Monto_Compensario > 0) {
+            $valorHora = ConfiguracionHoras::getValorActual();
+            if ($valorHora > 0) {
+                $this->valor_hora_al_momento = $valorHora;
+                $horasDeJustificacion = $this->Monto_Compensario / $valorHora;
+                $this->horas_equivalentes_calculadas = $horasReales + $horasDeJustificacion;
+            } else {
+                $this->horas_equivalentes_calculadas = $horasReales;
+            }
+        } else {
+            $this->horas_equivalentes_calculadas = $horasReales;
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Obtener solo las horas de justificación calculadas
+     */
+    public function getHorasJustificacion()
+    {
+        if (!$this->Monto_Compensario || $this->Monto_Compensario <= 0) {
+            return 0;
+        }
+        
+        $valorHora = $this->valor_hora_al_momento ?? ConfiguracionHoras::getValorActual();
+        return $valorHora > 0 ? $this->Monto_Compensario / $valorHora : 0;
+    }
 }

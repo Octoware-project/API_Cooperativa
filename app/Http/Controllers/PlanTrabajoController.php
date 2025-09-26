@@ -45,15 +45,42 @@ class PlanTrabajoController extends Controller
         }
         $user = \App\Models\User::where('email', $userData->email)->first();
         $plan = $user->planTrabajos()->findOrFail($id);
-        // Sumar horas del usuario en el mes/año del plan
-        $horasCumplidas = $user->horasMensuales()
+        
+        // Obtener todas las horas mensuales del usuario para este plan
+        $horasRegistradas = $user->horasMensuales()
             ->where('anio', $plan->anio)
             ->where('mes', $plan->mes)
-            ->sum('Cantidad_Horas');
+            ->get();
+        
+        $horasReales = 0;
+        $horasJustificadas = 0;
+        
+        foreach ($horasRegistradas as $hora) {
+            // Sumar horas reales
+            if ($hora->Cantidad_Horas) {
+                $horasReales += $hora->Cantidad_Horas;
+            }
+            
+            // Sumar horas justificadas (usar la conversión calculada cuando esté disponible)
+            if ($hora->Monto_Compensario && $hora->Monto_Compensario > 0) {
+                if ($hora->horas_equivalentes_calculadas) {
+                    $horasJustificadas += $hora->horas_equivalentes_calculadas;
+                } else {
+                    // Fallback: calcular usando el valor histórico o 1000 como default
+                    $valorHora = $hora->valor_hora_al_momento ?: 1000;
+                    $horasJustificadas += $hora->Monto_Compensario / $valorHora;
+                }
+            }
+        }
+        
+        $horasTotales = $horasReales + $horasJustificadas;
+        
         $progreso = [
             'horas_requeridas' => $plan->horas_requeridas,
-            'horas_cumplidas' => $horasCumplidas,
-            'porcentaje' => $plan->horas_requeridas > 0 ? round(($horasCumplidas / $plan->horas_requeridas) * 100, 2) : 0
+            'horas_cumplidas' => round($horasTotales, 2),
+            'horas_reales' => round($horasReales, 2),
+            'horas_justificadas' => round($horasJustificadas, 2),
+            'porcentaje' => $plan->horas_requeridas > 0 ? round(($horasTotales / $plan->horas_requeridas) * 100, 2) : 0
         ];
         return response()->json($progreso, 200);
     }

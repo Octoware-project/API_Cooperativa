@@ -47,7 +47,7 @@ class Horas_MensualesController extends Controller
     }
 
     /**
-     * Calcula las horas registradas por mes y año
+     * Calcula las horas registradas por mes y año (incluyendo horas equivalentes)
      */
     public function calcularHorasRegistradas(Request $request) 
     {
@@ -59,12 +59,34 @@ class Horas_MensualesController extends Controller
             return response()->json(['error' => 'El parámetro mes es requerido'], 400);
         }
 
-        $total = Horas_Mensuales::where('email', $user->email)
+        $registros = Horas_Mensuales::where('email', $user->email)
             ->where('mes', $mes)
             ->where('anio', $anio)
-            ->sum('Cantidad_Horas');
+            ->get();
+        
+        // Calcular horas reales y equivalentes
+        $horasReales = $registros->sum('Cantidad_Horas') ?? 0;
+        $horasEquivalentes = $registros->sum(function($registro) {
+            return $registro->getHorasEquivalentes();
+        });
+        $horasJustificadas = $horasEquivalentes - $horasReales;
             
-        return response()->json(['total_horas' => $total], 200);
+        return response()->json([
+            'total_horas' => $horasEquivalentes, // Total (reales + justificadas)
+            'horas_reales' => $horasReales,
+            'horas_justificadas' => $horasJustificadas,
+            'detalle_registros' => $registros->map(function($registro) {
+                return [
+                    'id' => $registro->id,
+                    'fecha' => $registro->dia . '/' . $registro->mes . '/' . $registro->anio,
+                    'horas_reales' => $registro->Cantidad_Horas ?? 0,
+                    'horas_equivalentes' => $registro->getHorasEquivalentes(),
+                    'monto_compensario' => $registro->Monto_Compensario,
+                    'es_justificacion' => $registro->Monto_Compensario > 0,
+                    'valor_hora_usado' => $registro->valor_hora_al_momento
+                ];
+            })
+        ], 200);
     }
 
     /**
@@ -95,6 +117,10 @@ class Horas_MensualesController extends Controller
         $horasMensuales->Motivo_Falla = $request->input('Motivo_Falla');
         $horasMensuales->Tipo_Justificacion = $request->input('Tipo_Justificacion');
         
+        $horasMensuales->save();
+        
+        // NUEVO: Calcular y fijar horas equivalentes al momento de guardar
+        $horasMensuales->calcularYFijarHorasEquivalentes();
         $horasMensuales->save();
         
         return response()->json([
@@ -130,6 +156,10 @@ class Horas_MensualesController extends Controller
         $horasMensuales->Motivo_Falla = $request->input('Motivo_Falla');
         $horasMensuales->Tipo_Justificacion = $request->input('Tipo_Justificacion');
         
+        $horasMensuales->save();
+        
+        // NUEVO: Calcular y fijar horas equivalentes
+        $horasMensuales->calcularYFijarHorasEquivalentes();
         $horasMensuales->save();
         
         return response()->json([
