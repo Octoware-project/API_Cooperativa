@@ -93,6 +93,7 @@ class FacturasController extends Controller
                              ->where('email', $email)
                              ->firstOrFail();
             
+            // El archivo se eliminará automáticamente por el Model Event
             $factura->delete();
             
             return response()->json([
