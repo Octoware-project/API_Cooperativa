@@ -7,9 +7,7 @@ use App\Models\Horas_Mensuales;
 
 class Horas_MensualesController extends Controller
 {
-    /**
-     * Obtiene los datos del usuario autenticado desde el request
-     */
+
     private function getAuthenticatedUser(Request $request)
     {
         $user = $request->user;
@@ -26,12 +24,33 @@ class Horas_MensualesController extends Controller
     public function index(Request $request)
     {
         $user = $this->getAuthenticatedUser($request);
-        $horas = Horas_Mensuales::where('email', $user->email)->get();
-        return response()->json(['horas' => $horas], 200);
+        
+        // Si se solicita paginación explícitamente
+        if ($request->has('paginate') && $request->input('paginate') === 'true') {
+            $perPage = $request->input('per_page', 50);
+            $perPage = min($perPage, 100);
+            
+            $horas = Horas_Mensuales::where('email', $user->email)
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+                
+            return response()->json(['horas' => $horas], 200);
+        }
+        
+        // Comportamiento por defecto: devolver todos los registros (compatibilidad)
+        // Limitado a los últimos 200 registros por seguridad
+        $horas = Horas_Mensuales::where('email', $user->email)
+            ->orderBy('created_at', 'desc')
+            ->limit(200)
+            ->get();
+            
+        return response()->json([
+            'horas' => $horas,
+            'count' => $horas->count(),
+            'user_email' => $user->email
+        ], 200);
     }
-    /**
-     * Suma todas las horas del mes actual para el usuario autenticado
-     */
+  
     public function sumarHorasUltimoMes(Request $request)
     {
         $user = $this->getAuthenticatedUser($request);
@@ -46,9 +65,7 @@ class Horas_MensualesController extends Controller
         return response()->json(['total_horas_ultimo_mes' => $total], 200);
     }
 
-    /**
-     * Calcula las horas registradas por mes y año (incluyendo horas equivalentes)
-     */
+  
     public function calcularHorasRegistradas(Request $request) 
     {
         $user = $this->getAuthenticatedUser($request);
@@ -64,26 +81,58 @@ class Horas_MensualesController extends Controller
             ->where('anio', $anio)
             ->get();
         
-        // Calcular horas reales y equivalentes
+        
+        $valorHoraActual = \App\Models\ConfiguracionHoras::getValorActual();
+        
         $horasReales = $registros->sum('Cantidad_Horas') ?? 0;
-        $horasEquivalentes = $registros->sum(function($registro) {
-            return $registro->getHorasEquivalentes();
-        });
+        
+        $horasEquivalentes = 0;
+        foreach ($registros as $registro) {
+            if ($registro->horas_equivalentes_calculadas !== null) {
+                $horasEquivalentes += $registro->horas_equivalentes_calculadas;
+            } else {
+                $horasRealesRegistro = $registro->Cantidad_Horas ?? 0;
+                if ($registro->Monto_Compensario && $registro->Monto_Compensario > 0 && $valorHoraActual > 0) {
+                    $valorHora = $registro->valor_hora_al_momento ?? $valorHoraActual;
+                    $horasJustificacion = $registro->Monto_Compensario / $valorHora;
+                    $horasEquivalentes += $horasRealesRegistro + $horasJustificacion;
+                } else {
+                    $horasEquivalentes += $horasRealesRegistro;
+                }
+            }
+        }
+        
         $horasJustificadas = $horasEquivalentes - $horasReales;
             
         return response()->json([
             'total_horas' => $horasEquivalentes, // Total (reales + justificadas)
             'horas_reales' => $horasReales,
             'horas_justificadas' => $horasJustificadas,
-            'detalle_registros' => $registros->map(function($registro) {
+            'detalle_registros' => $registros->map(function($registro) use ($valorHoraActual) {
+                // OPTIMIZACIÓN: Reutilizar cálculos ya hechos
+                $horasReales = $registro->Cantidad_Horas ?? 0;
+                $horasEquivalentes = 0;
+                
+                if ($registro->horas_equivalentes_calculadas !== null) {
+                    $horasEquivalentes = $registro->horas_equivalentes_calculadas;
+                } else {
+                    if ($registro->Monto_Compensario && $registro->Monto_Compensario > 0 && $valorHoraActual > 0) {
+                        $valorHora = $registro->valor_hora_al_momento ?? $valorHoraActual;
+                        $horasJustificacion = $registro->Monto_Compensario / $valorHora;
+                        $horasEquivalentes = $horasReales + $horasJustificacion;
+                    } else {
+                        $horasEquivalentes = $horasReales;
+                    }
+                }
+                
                 return [
                     'id' => $registro->id,
                     'fecha' => $registro->dia . '/' . $registro->mes . '/' . $registro->anio,
-                    'horas_reales' => $registro->Cantidad_Horas ?? 0,
-                    'horas_equivalentes' => $registro->getHorasEquivalentes(),
+                    'horas_reales' => $horasReales,
+                    'horas_equivalentes' => $horasEquivalentes,
                     'monto_compensario' => $registro->Monto_Compensario,
                     'es_justificacion' => $registro->Monto_Compensario > 0,
-                    'valor_hora_usado' => $registro->valor_hora_al_momento
+                    'valor_hora_usado' => $registro->valor_hora_al_momento ?? $valorHoraActual
                 ];
             })
         ], 200);

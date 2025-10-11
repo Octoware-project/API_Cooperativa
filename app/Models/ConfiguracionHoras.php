@@ -23,15 +23,33 @@ class ConfiguracionHoras extends Model
     ];
 
     /**
-     * Obtener el valor por hora actualmente vigente
+     * Cache estático para el valor actual
      */
-    public static function getValorActual()
+    private static $valorActualCache = null;
+    private static $cacheTime = null;
+    
+    /**
+     * Obtener el valor por hora actualmente vigente (con cache)
+     */
+    public static function getValorActual($forceRefresh = false)
     {
-        $config = self::where('activo', true)
-                     ->latest('created_at')
-                     ->first();
-                     
-        return $config ? $config->valor_por_hora : 0;
+        // Cache válido por 5 minutos
+        $cacheValidTime = 300; // 5 minutos en segundos
+        
+        if ($forceRefresh || 
+            self::$valorActualCache === null || 
+            self::$cacheTime === null ||
+            (time() - self::$cacheTime) > $cacheValidTime) {
+            
+            $config = self::where('activo', true)
+                         ->latest('created_at')
+                         ->first();
+                         
+            self::$valorActualCache = $config ? $config->valor_por_hora : 0;
+            self::$cacheTime = time();
+        }
+        
+        return self::$valorActualCache;
     }
 
     /**
