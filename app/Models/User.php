@@ -10,6 +10,16 @@ class User extends Authenticatable
 {
 	use HasFactory, Notifiable;
 
+
+
+	/**
+	 * Relación con el modelo Persona
+	 */
+	public function persona()
+	{
+		return $this->hasOne(Persona::class, 'user_id', 'id');
+	}
+
 	public function planTrabajos()
 	{
 		return $this->hasMany(PlanTrabajo::class);
@@ -19,4 +29,19 @@ class User extends Authenticatable
 	{
 		return $this->hasMany(Horas_Mensuales::class, 'email', 'email');
 	}
+
+	protected $fillable = [
+		'name',
+		'email',
+		'password',
+	];
+
+	protected $hidden = [
+		'password',
+		'remember_token',
+	];
+
+	protected $casts = [
+		'email_verified_at' => 'datetime',
+	];
 }
