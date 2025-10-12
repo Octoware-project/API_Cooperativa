@@ -116,6 +116,9 @@ class FacturasController extends Controller
     public function agregarFactura(Request $request)
     {
         try {
+            \Log::info('Iniciando creación de factura');
+            \Log::info('Datos recibidos: ', $request->all());
+            
             // Validación de datos de entrada
             $validator = Validator::make($request->all(), [
                 'Monto' => 'required|numeric|min:0.01|max:999999.99',
@@ -123,6 +126,7 @@ class FacturasController extends Controller
                 'Mes' => 'required|string|in:' . implode(',', array_keys(self::MESES)),
                 'Anio' => 'required|integer|min:2000|max:2100',
                 'Estado_Pago' => 'nullable|string|in:Pendiente,Aceptado,Rechazado',
+                'motivo' => 'required|string|min:5|max:500',
                 'Archivo_Comprobante' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:5120' // Solo imágenes y PDF, 5MB max
             ]);
 
@@ -144,6 +148,7 @@ class FacturasController extends Controller
             $factura->Monto = $monto;
             $factura->tipo_pago = $request->input('tipo_pago');
             $factura->Estado_Pago = $request->input('Estado_Pago', 'Pendiente');
+            $factura->motivo = $request->input('motivo');
 
             // Manejar archivo comprobante
             if ($request->hasFile('Archivo_Comprobante')) {
@@ -168,14 +173,19 @@ class FacturasController extends Controller
                     'tipo_pago' => $factura->tipo_pago,
                     'estado_pago' => $factura->Estado_Pago,
                     'fecha_pago' => $factura->fecha_pago,
+                    'motivo' => $factura->motivo,
                     'archivo_comprobante' => $factura->Archivo_Comprobante
                 ]
             ], 201);
 
         } catch (\Exception $e) {
+            \Log::error('Error al crear factura: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
             return response()->json([
                 'error' => 'Error interno del servidor',
-                'mensaje' => 'No se pudo crear la factura'
+                'mensaje' => 'No se pudo crear la factura',
+                'detalle' => $e->getMessage() // Temporalmente para debug
             ], 500);
         }
     }
@@ -229,9 +239,13 @@ class FacturasController extends Controller
             $mimeType = mime_content_type($filePath);
             $fileName = basename($factura->Archivo_Comprobante);
 
+            // Check if it's a request for viewing (inline) or downloading
+            $isDownload = $request->query('download', false);
+            $disposition = $isDownload ? 'attachment' : 'inline';
+            
             return response()->file($filePath, [
                 'Content-Type' => $mimeType,
-                'Content-Disposition' => 'inline; filename="' . $fileName . '"'
+                'Content-Disposition' => $disposition . '; filename="' . $fileName . '"'
             ]);
 
         } catch (\Exception $e) {

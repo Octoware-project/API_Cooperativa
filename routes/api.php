@@ -7,6 +7,7 @@ use App\Http\Middleware\Autenticacion;
 use App\Http\Controllers\Horas_MensualesController;
 use App\Http\Controllers\FacturasController;
 use App\Http\Controllers\PlanTrabajoController;
+use App\Http\Controllers\UserController;
 
 Route::middleware([Autenticacion::class])->group(function () {
    
@@ -34,5 +35,10 @@ Route::middleware([Autenticacion::class])->group(function () {
     Route::get('/facturas', [FacturasController::class, 'listarFacturasPorUsuario']);
     Route::post('/facturas/filtrar', [FacturasController::class, 'filtrarFacturas']);
 
+    // Rutas para gestión de usuarios (proxy a API Usuarios)
+    Route::post('/completar-datos', [UserController::class, 'completarDatos']);
+    Route::post('/editar-datos-persona', [UserController::class, 'editarDatosPersona']);
+    Route::get('/datos-usuario', [UserController::class, 'obtenerDatosUsuario']);
+    Route::post('/cambiar-contrasena', [UserController::class, 'cambiarContrasena']);
 
 });

@@ -18,7 +18,8 @@ class Factura extends Model
         'Archivo_Comprobante',
         'Estado_Pago',
         'tipo_pago',
-        'fecha_pago'
+        'fecha_pago',
+        'motivo'
     ];
 
     /**
