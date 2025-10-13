@@ -274,4 +274,156 @@ class Horas_MensualesController extends Controller
             'data' => $horasMensuales
         ], 200);
     }
+
+    /**
+     * ENDPOINT OPTIMIZADO: Dashboard completo con todas las horas, progreso y plan en una sola respuesta
+     */
+    public function dashboardHoras(Request $request)
+    {
+        $user = $this->getAuthenticatedUser($request);
+        $mes = $request->input('mes', now()->month);
+        $anio = $request->input('anio', now()->year);
+        
+        try {
+            // 1. Una sola query para obtener todos los registros del mes
+            $registros = Horas_Mensuales::where('email', $user->email)
+                ->where('mes', $mes)
+                ->where('anio', $anio)
+                ->select([
+                    'id', 'dia', 'Cantidad_Horas', 'Monto_Compensario',
+                    'horas_equivalentes_calculadas', 'valor_hora_al_momento',
+                    'created_at', 'Motivo_Falla', 'Tipo_Justificacion'
+                ])
+                ->orderBy('dia', 'asc')
+                ->get();
+
+            // 2. Obtener valor hora actual (con cache)
+            $valorHoraActual = \App\Models\ConfiguracionHoras::getValorActual();
+            
+            // 3. Calcular todo en PHP (más eficiente que múltiples queries)
+            $horasReales = 0;
+            $horasJustificadas = 0;
+            $registrosFormateados = [];
+            
+            foreach ($registros as $registro) {
+                $hReales = $registro->Cantidad_Horas ?? 0;
+                $hJustif = 0;
+                
+                // Calcular horas justificadas si hay monto
+                if ($registro->Monto_Compensario > 0) {
+                    $valorUsado = $registro->valor_hora_al_momento ?? $valorHoraActual;
+                    if ($valorUsado > 0) {
+                        $hJustif = $registro->Monto_Compensario / $valorUsado;
+                    }
+                }
+                
+                $horasReales += $hReales;
+                $horasJustificadas += $hJustif;
+                
+                // Determinar tipo de registro
+                $tipo = $this->determinarTipoRegistro($hReales, $hJustif);
+                
+                // Verificar si puede cancelar (menos de 24 horas)
+                $puedeCancelar = $registro->created_at->diffInHours(now()) < 24;
+                
+                $registrosFormateados[] = [
+                    'id' => $registro->id,
+                    'fecha' => sprintf('%02d/%02d/%d', $registro->dia, $mes, $anio),
+                    'horas_reales' => $hReales,
+                    'horas_justificadas' => round($hJustif, 2),
+                    'total_horas' => round($hReales + $hJustif, 2),
+                    'tipo' => $tipo['key'],
+                    'tipo_nombre' => $tipo['nombre'],
+                    'tipo_descripcion' => $tipo['descripcion'],
+                    'puede_cancelar' => $puedeCancelar,
+                    'descripcion' => $registro->Motivo_Falla,
+                    'justificacion_tipo' => $registro->Tipo_Justificacion,
+                    'monto_compensario' => $registro->Monto_Compensario
+                ];
+            }
+            
+            // 4. Obtener plan de trabajo en la misma consulta (si existe)
+            $planData = null;
+            $progresoData = null;
+            
+            // Buscar plan usando el user_id si tenemos la relación
+            $userModel = \App\Models\User::where('email', $user->email)->first();
+            if ($userModel) {
+                $plan = \App\Models\PlanTrabajo::where('user_id', $userModel->id)
+                    ->where('mes', $mes)
+                    ->where('anio', $anio)
+                    ->first();
+                
+                if ($plan) {
+                    $totalHoras = $horasReales + $horasJustificadas;
+                    $progresoPorcentaje = $plan->horas_requeridas > 0 
+                        ? min(($totalHoras / $plan->horas_requeridas) * 100, 100) 
+                        : 0;
+                    
+                    $planData = [
+                        'id' => $plan->id,
+                        'horas_requeridas' => $plan->horas_requeridas,
+                        'mes' => $plan->mes,
+                        'anio' => $plan->anio
+                    ];
+                    
+                    $progresoData = [
+                        'horas_requeridas' => $plan->horas_requeridas,
+                        'horas_cumplidas' => round($totalHoras, 2),
+                        'horas_reales' => round($horasReales, 2),
+                        'horas_justificadas' => round($horasJustificadas, 2),
+                        'porcentaje' => round($progresoPorcentaje, 2),
+                        'completado' => $progresoPorcentaje >= 100
+                    ];
+                }
+            }
+            
+            return response()->json([
+                'registros' => $registrosFormateados,
+                'resumen' => [
+                    'horas_reales' => round($horasReales, 2),
+                    'horas_justificadas' => round($horasJustificadas, 2),
+                    'total_horas' => round($horasReales + $horasJustificadas, 2),
+                    'total_registros' => count($registros)
+                ],
+                'plan' => $planData,
+                'progreso' => $progresoData,
+                'mes' => (int)$mes,
+                'anio' => (int)$anio,
+                'valor_hora_actual' => $valorHoraActual
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al obtener datos del dashboard',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper: Determinar tipo de registro basado en horas
+     */
+    private function determinarTipoRegistro($horasReales, $horasJustificadas)
+    {
+        if ($horasReales > 0 && $horasJustificadas > 0) {
+            return [
+                'key' => 'mixtas',
+                'nombre' => 'Horas Mixtas',
+                'descripcion' => 'Reales + Justificadas'
+            ];
+        } elseif ($horasJustificadas > 0) {
+            return [
+                'key' => 'justificacion',
+                'nombre' => 'Justificación',
+                'descripcion' => 'Horas justificadas'
+            ];
+        } else {
+            return [
+                'key' => 'horas-reales',
+                'nombre' => 'Horas Trabajadas',
+                'descripcion' => 'Horas de trabajo'
+            ];
+        }
+    }
 }

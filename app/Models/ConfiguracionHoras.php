@@ -22,16 +22,42 @@ class ConfiguracionHoras extends Model
         'activo' => 'boolean',
     ];
 
+    // Cache estático para valor por hora
+    private static $valorCache = null;
+    private static $cacheTime = null;
+    private static $cacheDuration = 3600; // 1 hora en segundos
+
     /**
-     * Obtener el valor por hora actualmente vigente
+     * Obtener el valor por hora actualmente vigente (con cache)
      */
     public static function getValorActual()
     {
+        // Verificar si el cache es válido
+        if (self::$valorCache !== null && 
+            self::$cacheTime !== null && 
+            (time() - self::$cacheTime) < self::$cacheDuration) {
+            return self::$valorCache;
+        }
+
+        // Cache expirado o no existe, consultar BD
         $config = self::where('activo', true)
                      ->latest('created_at')
                      ->first();
+        
+        // Actualizar cache
+        self::$valorCache = $config ? $config->valor_por_hora : 1000; // Fallback a 1000
+        self::$cacheTime = time();
                      
-        return $config ? $config->valor_por_hora : 0;
+        return self::$valorCache;
+    }
+
+    /**
+     * Limpiar cache (útil cuando se actualiza la configuración)
+     */
+    public static function clearCache()
+    {
+        self::$valorCache = null;
+        self::$cacheTime = null;
     }
 
     /**

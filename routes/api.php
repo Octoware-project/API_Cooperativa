@@ -13,12 +13,15 @@ Route::middleware([Autenticacion::class])->group(function () {
    
     // Rutas para Plan de Trabajo
     Route::get('/planes-trabajo', [PlanTrabajoController::class, 'index']);
+    Route::get('/planes-trabajo-optimizado', [PlanTrabajoController::class, 'indexWithProgress']); // NUEVO ENDPOINT AGREGADO
+    Route::get('/planes-trabajo-dashboard', [PlanTrabajoController::class, 'dashboard']); // ENDPOINT TODO-EN-UNO SÚPER OPTIMIZADO
     Route::post('/planes-trabajo', [PlanTrabajoController::class, 'store']);
     Route::get('/planes-trabajo/{id}/progreso', [PlanTrabajoController::class, 'progreso']);
 
     // Rutas para Horas Mensuales
     Route::get('/horas', [Horas_MensualesController::class, "index"]);
     Route::get('/horas/ultimo-mes', [Horas_MensualesController::class, 'sumarHorasUltimoMes']);
+    Route::get('/dashboard-horas', [Horas_MensualesController::class, 'dashboardHoras']); // NUEVO ENDPOINT OPTIMIZADO
     Route::post('/horas', [Horas_MensualesController::class, "store"]);
     Route::post('/horas/calcular', [Horas_MensualesController::class, "calcularHorasRegistradas"]);
     Route::post('/horas/justificacion', [Horas_MensualesController::class, "agregarJustificacion"]);
