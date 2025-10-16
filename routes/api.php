@@ -8,6 +8,7 @@ use App\Http\Controllers\Horas_MensualesController;
 use App\Http\Controllers\FacturasController;
 use App\Http\Controllers\PlanTrabajoController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AsambleasController;
 
 Route::middleware([Autenticacion::class])->group(function () {
    
@@ -40,5 +41,11 @@ Route::middleware([Autenticacion::class])->group(function () {
     Route::post('/editar-datos-persona', [UserController::class, 'editarDatosPersona']);
     Route::get('/datos-usuario', [UserController::class, 'obtenerDatosUsuario']);
     Route::post('/cambiar-contrasena', [UserController::class, 'cambiarContrasena']);
+
+    // Rutas para Asambleas
+    Route::get('/asambleas', [AsambleasController::class, 'index']);
+    Route::get('/asambleas/{id}', [AsambleasController::class, 'show']);
+    Route::get('/asambleas-futuras', [AsambleasController::class, 'futuras']);
+    Route::get('/asambleas-pasadas', [AsambleasController::class, 'pasadas']);
 
 });
