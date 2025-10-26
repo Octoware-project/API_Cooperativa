@@ -8,16 +8,12 @@ use Illuminate\Support\Facades\Validator;
 
 class AsambleasController extends Controller
 {
-    /**
-     * Obtener todas las asambleas ordenadas por fecha descendente
-     */
+
     public function index(Request $request)
     {
         try {
-            // Obtener todas las asambleas ordenadas por fecha (más reciente primero)
             $asambleas = JuntaAsamblea::orderByFechaDesc()->get();
 
-            // Formatear las fechas para mejor presentación
             $asambleasFormateadas = $asambleas->map(function ($asamblea) {
                 return [
                     'id' => $asamblea->id,
@@ -47,9 +43,6 @@ class AsambleasController extends Controller
         }
     }
 
-    /**
-     * Obtener detalles de una asamblea específica
-     */
     public function show(Request $request, $id)
     {
         try {
@@ -81,9 +74,6 @@ class AsambleasController extends Controller
         }
     }
 
-    /**
-     * Obtener solo las asambleas futuras
-     */
     public function futuras(Request $request)
     {
         try {
@@ -118,9 +108,6 @@ class AsambleasController extends Controller
         }
     }
 
-    /**
-     * Obtener solo las asambleas pasadas
-     */
     public function pasadas(Request $request)
     {
         try {

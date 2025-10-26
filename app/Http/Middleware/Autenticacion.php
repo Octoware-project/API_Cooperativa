@@ -13,7 +13,6 @@ class Autenticacion
     public function handle(Request $request, Closure $next): Response
     {
         if (app()->environment('testing')) {
-            // Simula usuario autenticado en tests
             $request->merge(['user' => [
                 'email' => 'test@example.com',
                 'name' => 'Test User',
@@ -30,7 +29,7 @@ class Autenticacion
             'Authorization' => $token,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json'
-        ])->get('http://127.0.0.1:8000/api/validate'); // apunta a la API de Usuarios
+        ])->get('http://127.0.0.1:8000/api/validate');
 
         if($validacion->status() != 200)
             return response()->json(["error" => "Invalid Token"],401);

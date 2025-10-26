@@ -26,6 +26,8 @@ class Persona extends Model
 
     protected $fillable = [
         'user_id',
+        'unidad_habitacional_id',
+        'fecha_asignacion_unidad',
         'name',
         'apellido',
         'CI',
@@ -37,9 +39,18 @@ class Persona extends Model
         'ocupacion',
         'nacionalidad',
         'estadoRegistro',
+        'fecha_aceptacion',
     ];
 
     protected $casts = [
         'fechaNacimiento' => 'date',
+        'fecha_asignacion_unidad' => 'datetime',
+        'fecha_aceptacion' => 'datetime',
     ];
+
+ 
+    public function unidadHabitacional()
+    {
+        return $this->belongsTo(UnidadHabitacional::class, 'unidad_habitacional_id');
+    }
 }

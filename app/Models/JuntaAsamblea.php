@@ -22,25 +22,19 @@ class JuntaAsamblea extends Model
         'fecha' => 'date'
     ];
 
-    /**
-     * Scope para obtener asambleas ordenadas por fecha descendente (más reciente primero)
-     */
+
     public function scopeOrderByFechaDesc($query)
     {
         return $query->orderBy('fecha', 'desc');
     }
 
-    /**
-     * Scope para obtener asambleas futuras
-     */
+
     public function scopeFuturas($query)
     {
         return $query->where('fecha', '>=', now()->format('Y-m-d'));
     }
 
-    /**
-     * Scope para obtener asambleas pasadas
-     */
+
     public function scopePasadas($query)
     {
         return $query->where('fecha', '<', now()->format('Y-m-d'));
