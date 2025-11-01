@@ -11,9 +11,7 @@ use App\Models\Persona;
 
 class UserController extends Controller
 {
-    /**
-     * Completar datos de la persona autenticada
-     */
+
     public function completarDatos(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -34,10 +32,8 @@ class UserController extends Controller
         }
 
         try {
-            // Obtener datos del usuario autenticado desde el middleware
             $userEmail = $request->user['email'];
             
-            // Buscar el usuario en la base de datos de usuarios
             $user = User::where('email', $userEmail)->first();
             if (!$user) {
                 return response()->json(['message' => 'Usuario no encontrado'], 404);
@@ -48,7 +44,6 @@ class UserController extends Controller
                 return response()->json(['message' => 'No se encontró la persona asociada'], 404);
             }
 
-            // Actualizar datos (solo los permitidos)
             $persona->update([
                 'telefono' => $request->input('telefono'),
                 'direccion' => $request->input('direccion'),
@@ -73,9 +68,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Editar datos de persona autenticada (solo campos editables)
-     */
     public function editarDatosPersona(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -96,10 +88,8 @@ class UserController extends Controller
         }
 
         try {
-            // Obtener datos del usuario autenticado desde el middleware
             $userEmail = $request->user['email'];
             
-            // Buscar el usuario en la base de datos de usuarios
             $user = User::where('email', $userEmail)->first();
             if (!$user) {
                 return response()->json(['message' => 'Usuario no encontrado'], 404);
@@ -110,7 +100,6 @@ class UserController extends Controller
                 return response()->json(['message' => 'No se encontró la persona asociada'], 404);
             }
 
-            // Actualizar datos (solo los permitidos)
             $persona->update([
                 'telefono' => $request->input('telefono'),
                 'direccion' => $request->input('direccion'),
@@ -134,27 +123,20 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Obtener datos del usuario autenticado
-     */
     public function obtenerDatosUsuario(Request $request)
     {
         try {
-            // Verificar que el middleware haya pasado los datos del usuario
             if (!isset($request->user) || !isset($request->user['email'])) {
                 return response()->json(['message' => 'Datos de usuario no disponibles'], 401);
             }
             
-            // Obtener datos del usuario autenticado desde el middleware
             $userEmail = $request->user['email'];
             
-            // Buscar el usuario en la base de datos
-            $user = User::where('email', $userEmail)->with('persona')->first();
+            $user = User::where('email', $userEmail)->with(['persona.unidadHabitacional'])->first();
             if (!$user) {
                 return response()->json(['message' => 'Usuario no encontrado'], 404);
             }
 
-            // Construir respuesta optimizada con solo los campos necesarios
             $response = [
                 'user' => [
                     'id' => $user->id,
@@ -176,6 +158,15 @@ class UserController extends Controller
                     'ocupacion' => $user->persona->ocupacion,
                     'nacionalidad' => $user->persona->nacionalidad,
                     'estadoRegistro' => $user->persona->estadoRegistro,
+                    'fecha_asignacion_unidad' => $user->persona->fecha_asignacion_unidad,
+                ] : null,
+                'unidad_habitacional' => ($user->persona && $user->persona->unidadHabitacional) ? [
+                    'id' => $user->persona->unidadHabitacional->id,
+                    'numero_departamento' => $user->persona->unidadHabitacional->numero_departamento,
+                    'piso' => $user->persona->unidadHabitacional->piso,
+                    'estado' => $user->persona->unidadHabitacional->estado,
+                    'nombre_completo' => $user->persona->unidadHabitacional->nombre_completo,
+                    'fecha_asignacion' => $user->persona->fecha_asignacion_unidad,
                 ] : null
             ];
             
@@ -189,9 +180,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Cambiar contraseña del usuario autenticado
-     */
     public function cambiarContrasena(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -208,16 +196,13 @@ class UserController extends Controller
         }
 
         try {
-            // Obtener datos del usuario autenticado desde el middleware
             $userEmail = $request->user['email'];
             
-            // Buscar el usuario en la base de datos de usuarios
             $user = User::where('email', $userEmail)->first();
             if (!$user) {
                 return response()->json(['message' => 'Usuario no encontrado'], 404);
             }
 
-            // Verificar que la contraseña actual sea correcta
             if (!Hash::check($request->input('current_password'), $user->password)) {
                 return response()->json([
                     'message' => 'La contraseña actual es incorrecta',
@@ -225,7 +210,6 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Actualizar la contraseña
             $user->update([
                 'password' => Hash::make($request->input('password'))
             ]);

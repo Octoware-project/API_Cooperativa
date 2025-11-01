@@ -16,7 +16,6 @@ class PlanTrabajo extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Horas mensuales del usuario en el mes/año de este plan (por email)
     public function horasMensuales()
     {
         return $this->user->horasMensuales()
@@ -24,7 +23,6 @@ class PlanTrabajo extends Model
             ->where('mes', $this->mes);
     }
 
-    // Total de horas cargadas en el mes/año de este plan
     public function horasCumplidas()
     {
         return $this->horasMensuales()->sum('Cantidad_Horas');

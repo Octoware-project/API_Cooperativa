@@ -22,9 +22,7 @@ class ConfiguracionHoras extends Model
         'activo' => 'boolean',
     ];
 
-    /**
-     * Obtener el valor por hora actualmente vigente
-     */
+
     public static function getValorActual()
     {
         $config = self::where('activo', true)
@@ -34,9 +32,7 @@ class ConfiguracionHoras extends Model
         return $config ? $config->valor_por_hora : 0;
     }
 
-    /**
-     * Obtener la configuración activa actual
-     */
+
     public static function getConfiguracionActual()
     {
         return self::where('activo', true)

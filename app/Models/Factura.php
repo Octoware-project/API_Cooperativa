@@ -22,12 +22,9 @@ class Factura extends Model
         'motivo'
     ];
 
-    /**
-     * The "booted" method of the model.
-     */
+  
     protected static function booted(): void
     {
-        // Cuando se elimina una factura (soft delete), eliminar también el archivo
         static::deleting(function (Factura $factura) {
             if ($factura->Archivo_Comprobante) {
                 try {
@@ -39,7 +36,6 @@ class Factura extends Model
             }
         });
 
-        // Si se hace force delete (eliminación permanente), también eliminar archivo
         static::forceDeleting(function (Factura $factura) {
             if ($factura->Archivo_Comprobante) {
                 try {
