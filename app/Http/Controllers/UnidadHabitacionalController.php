@@ -11,10 +11,19 @@ use Illuminate\Support\Facades\Auth;
 class UnidadHabitacionalController extends Controller
 {
 
-    public function miUnidad()
+    public function miUnidad(Request $request)
     {
         try {
-            $user = Auth::user();
+            $userEmail = $request->user['email'];
+            $user = User::where('email', $userEmail)->first();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado',
+                    'data' => null
+                ], 404);
+            }
             
             $persona = Persona::where('user_id', $user->id)->first();
             
@@ -65,10 +74,19 @@ class UnidadHabitacionalController extends Controller
         }
     }
     
-    public function residentesDeUnidad()
+    public function residentesDeUnidad(Request $request)
     {
         try {
-            $user = Auth::user();
+            $userEmail = $request->user['email'];
+            $user = User::where('email', $userEmail)->first();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado',
+                    'data' => []
+                ], 404);
+            }
             
             $persona = Persona::where('user_id', $user->id)->first();
             
@@ -92,7 +110,8 @@ class UnidadHabitacionalController extends Controller
                 ->where('unidad_habitacional_id', $persona->unidad_habitacional_id)
                 ->get();
             
-            $residentesFormateados = $residentes->map(function ($residente) {
+            $userId = $user->id;
+            $residentesFormateados = $residentes->map(function ($residente) use ($userId) {
                 return [
                     'id' => $residente->id,
                     'user_id' => $residente->user_id,
@@ -111,7 +130,7 @@ class UnidadHabitacionalController extends Controller
                     'fecha_asignacion_unidad' => $residente->fecha_asignacion_unidad,
                     'fecha_aceptacion' => $residente->fecha_aceptacion,
                     'email' => $residente->user ? $residente->user->email : null,
-                    'es_usuario_actual' => $residente->user_id === Auth::id(),
+                    'es_usuario_actual' => $residente->user_id === $userId,
                 ];
             });
             

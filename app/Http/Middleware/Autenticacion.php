@@ -13,11 +13,20 @@ class Autenticacion
     public function handle(Request $request, Closure $next): Response
     {
         if (app()->environment('testing')) {
-            $request->merge(['user' => [
-                'email' => 'test@example.com',
-                'name' => 'Test User',
-                'id' => 1
-            ]]);
+            $user = \App\Models\User::where('email', 'user@test.com')->first();
+            if ($user) {
+                $request->merge(['user' => [
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'id' => $user->id
+                ]]);
+            } else {
+                $request->merge(['user' => [
+                    'email' => 'user@test.com',
+                    'name' => 'Test User',
+                    'id' => 1
+                ]]);
+            }
             return $next($request);
         }
 

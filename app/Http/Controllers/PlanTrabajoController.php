@@ -68,6 +68,7 @@ class PlanTrabajoController extends Controller
             $plan = $user->planTrabajos()->findOrFail($id);
             
             $horasRegistradas = $user->horasMensuales()
+                ->select('Cantidad_Horas', 'Monto_Compensario', 'horas_equivalentes_calculadas', 'valor_hora_al_momento')
                 ->where('anio', $plan->anio)
                 ->where('mes', $plan->mes)
                 ->get();
@@ -92,14 +93,13 @@ class PlanTrabajoController extends Controller
             
             $horasTotales = $horasReales + $horasJustificadas;
             
-            $progreso = [
+            return response()->json([
                 'horas_requeridas' => $plan->horas_requeridas,
                 'horas_cumplidas' => round($horasTotales, 2),
                 'horas_reales' => round($horasReales, 2),
                 'horas_justificadas' => round($horasJustificadas, 2),
                 'porcentaje' => $plan->horas_requeridas > 0 ? round(($horasTotales / $plan->horas_requeridas) * 100, 2) : 0
-            ];
-            return response()->json($progreso, 200);
+            ], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al obtener progreso del plan', 'mensaje' => $e->getMessage()], 500);
         }
@@ -120,76 +120,86 @@ class PlanTrabajoController extends Controller
             
             $planes = $user->planTrabajos()->get();
             
+            if ($planes->isEmpty()) {
+                return response()->json([
+                    'planes' => [],
+                    'estadisticas' => [
+                        'total_planes' => 0,
+                        'planes_activos' => 0,
+                        'planes_completados' => 0
+                    ]
+                ], 200);
+            }
+            
+            $todasLasHoras = $user->horasMensuales()
+                ->select('mes', 'anio', 'Cantidad_Horas', 'Monto_Compensario', 'horas_equivalentes_calculadas', 'valor_hora_al_momento')
+                ->get();
+            
+            $horasPorPeriodo = [];
+            foreach ($todasLasHoras as $hora) {
+                $key = $hora->anio . '-' . $hora->mes;
+                if (!isset($horasPorPeriodo[$key])) {
+                    $horasPorPeriodo[$key] = ['reales' => 0, 'justificadas' => 0];
+                }
+                
+                if ($hora->Cantidad_Horas) {
+                    $horasPorPeriodo[$key]['reales'] += $hora->Cantidad_Horas;
+                }
+                
+                if ($hora->Monto_Compensario && $hora->Monto_Compensario > 0) {
+                    if ($hora->horas_equivalentes_calculadas) {
+                        $horasPorPeriodo[$key]['justificadas'] += $hora->horas_equivalentes_calculadas;
+                    } else {
+                        $valorHora = $hora->valor_hora_al_momento ?: 1000;
+                        $horasPorPeriodo[$key]['justificadas'] += $hora->Monto_Compensario / $valorHora;
+                    }
+                }
+            }
+            
             $planesConProgreso = [];
             $totalPlanes = 0;
             $planesActivos = 0;
             $planesCompletados = 0;
             
             foreach ($planes as $plan) {
-                $horasRegistradas = $user->horasMensuales()
-                    ->where('anio', $plan->anio)
-                    ->where('mes', $plan->mes)
-                    ->get();
-            
-            $horasReales = 0;
-            $horasJustificadas = 0;
-            
-            foreach ($horasRegistradas as $hora) {
-                if ($hora->Cantidad_Horas) {
-                    $horasReales += $hora->Cantidad_Horas;
-                }
+                $key = $plan->anio . '-' . $plan->mes;
+                $horasReales = $horasPorPeriodo[$key]['reales'] ?? 0;
+                $horasJustificadas = $horasPorPeriodo[$key]['justificadas'] ?? 0;
+                $horasTotales = $horasReales + $horasJustificadas;
                 
-                if ($hora->Monto_Compensario && $hora->Monto_Compensario > 0) {
-                    if ($hora->horas_equivalentes_calculadas) {
-                        $horasJustificadas += $hora->horas_equivalentes_calculadas;
-                    } else {
-                        $valorHora = $hora->valor_hora_al_momento ?: 1000;
-                        $horasJustificadas += $hora->Monto_Compensario / $valorHora;
-                    }
+                $porcentaje = $plan->horas_requeridas > 0 ? round(($horasTotales / $plan->horas_requeridas) * 100, 2) : 0;
+                $completado = $porcentaje >= 100;
+                
+                $planesConProgreso[] = [
+                    'id' => $plan->id,
+                    'mes' => $plan->mes,
+                    'anio' => $plan->anio,
+                    'horas_requeridas' => $plan->horas_requeridas,
+                    'progreso' => [
+                        'horas_cumplidas' => round($horasTotales, 2),
+                        'horas_reales' => round($horasReales, 2),
+                        'horas_justificadas' => round($horasJustificadas, 2),
+                        'porcentaje' => $porcentaje,
+                        'completado' => $completado
+                    ]
+                ];
+                
+                $totalPlanes++;
+                if ($completado) {
+                    $planesCompletados++;
+                } else if ($porcentaje > 0) {
+                    $planesActivos++;
                 }
             }
             
-            $horasTotales = $horasReales + $horasJustificadas;
-            $porcentaje = $plan->horas_requeridas > 0 ? round(($horasTotales / $plan->horas_requeridas) * 100, 2) : 0;
-            $completado = $porcentaje >= 100;
-            
-            $planConProgreso = [
-                'id' => $plan->id,
-                'mes' => $plan->mes,
-                'anio' => $plan->anio,
-                'horas_requeridas' => $plan->horas_requeridas,
-                'progreso' => [
-                    'horas_cumplidas' => round($horasTotales, 2),
-                    'horas_reales' => round($horasReales, 2),
-                    'horas_justificadas' => round($horasJustificadas, 2),
-                    'porcentaje' => $porcentaje,
-                    'completado' => $completado
-                ]
-            ];
-            
-            $planesConProgreso[] = $planConProgreso;
-            
-            $totalPlanes++;
-            if ($completado) {
-                $planesCompletados++;
-            } else if ($porcentaje > 0) {
-                $planesActivos++;
-            }
-        }
-        
-            $response = [
+            return response()->json([
                 'planes' => $planesConProgreso,
                 'estadisticas' => [
                     'total_planes' => $totalPlanes,
                     'planes_activos' => $planesActivos,
                     'planes_completados' => $planesCompletados
-                ],
-                'meta' => [
-                    'query_time_ms' => round((microtime(true) - $_SERVER['REQUEST_TIME_FLOAT']) * 1000, 2)
                 ]
-            ];
-            
-            return response()->json($response, 200);
+            ], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al obtener dashboard', 'mensaje' => $e->getMessage()], 500);
         }
