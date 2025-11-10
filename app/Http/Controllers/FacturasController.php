@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use App\Models\Factura;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class FacturasController extends Controller
 {
@@ -150,16 +151,48 @@ class FacturasController extends Controller
             $factura->motivo = $request->input('motivo');
 
             if ($request->hasFile('Archivo_Comprobante')) {
-                $path = $request->file('Archivo_Comprobante')->store('comprobantes', 'public');
-                $factura->Archivo_Comprobante = $path;
+                $file = $request->file('Archivo_Comprobante');
+                
+                // Validar que el archivo sea válido
+                if ($file->isValid()) {
+                    // Generar nombre único con extensión original
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = uniqid('comprobante_') . '.' . $extension;
+                    
+                    // Guardar el archivo
+                    $path = $file->storeAs('comprobantes', $filename, 'public');
+                    $factura->Archivo_Comprobante = $path;
+                    
+                    // Log para debugging
+                    Log::info('Archivo guardado exitosamente', [
+                        'path' => $path,
+                        'size' => $file->getSize(),
+                        'mime' => $file->getMimeType(),
+                        'original_name' => $file->getClientOriginalName()
+                    ]);
+                } else {
+                    Log::error('Archivo inválido recibido');
+                    return response()->json([
+                        'error' => 'El archivo recibido no es válido'
+                    ], 400);
+                }
             } else {
                 $factura->Archivo_Comprobante = null;
+                Log::warning('No se recibió archivo de comprobante');
             }
 
             $mes = self::MESES[$mesStr];
             $factura->fecha_pago = \Carbon\Carbon::create($anio, $mes, 1)->toDateString();
 
+            // Establecer created_at con el mes y año seleccionados
+            $fechaCreacion = \Carbon\Carbon::create($anio, $mes, 1);
+            $factura->created_at = $fechaCreacion;
+            $factura->updated_at = $fechaCreacion;
+
+            // Desactivar timestamps temporalmente para que Laravel no los sobrescriba
+            $factura->timestamps = false;
             $factura->save();
+            $factura->timestamps = true;
 
             return response()->json([
                 'success' => true,
@@ -211,7 +244,13 @@ class FacturasController extends Controller
     public function servirComprobante(Request $request, $id)
     {
         try {
-            $email = $request->user['email'];
+            // Obtener email del usuario autenticado
+            $email = $request->user['email'] ?? null;
+            
+            if (!$email) {
+                abort(403, 'No autorizado');
+            }
+            
             $factura = Factura::where('id', $id)
                              ->where('email', $email)
                              ->firstOrFail();
@@ -226,16 +265,41 @@ class FacturasController extends Controller
                 abort(404, 'Archivo no encontrado');
             }
 
-            $mimeType = mime_content_type($filePath);
+            // Determinar tipo MIME correcto basado en la extensión
+            $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+            $mimeTypes = [
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'pdf' => 'application/pdf',
+                'webp' => 'image/webp'
+            ];
+            
+            $mimeType = $mimeTypes[$extension] ?? mime_content_type($filePath);
             $fileName = basename($factura->Archivo_Comprobante);
 
             $isDownload = $request->query('download', false);
             $disposition = $isDownload ? 'attachment' : 'inline';
             
-            return response()->file($filePath, [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => $disposition . '; filename="' . $fileName . '"'
-            ]);
+            // Limpiar cualquier salida previa que pueda corromper el archivo
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            // Leer archivo binario
+            $fileContent = file_get_contents($filePath);
+            
+            return response($fileContent, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"')
+                ->header('Content-Length', strlen($fileContent))
+                ->header('Cache-Control', 'public, max-age=3600')
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept')
+                ->header('Access-Control-Expose-Headers', 'Content-Type, Content-Disposition, Content-Length')
+                ->header('Accept-Ranges', 'bytes');
 
         } catch (\Exception $e) {
             abort(404, 'Comprobante no encontrado');
