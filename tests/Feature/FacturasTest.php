@@ -38,7 +38,7 @@ class FacturasTest extends TestCase
 	public function test_AgregarFacturaMontoDemasiadoGrande()
 	{
 		$payload = [
-			'Monto' => 1000000.00, // Excede el máximo de 999999.99
+			'Monto' => 1000000.00,
 			'Estado_Pago' => 'Pendiente',
 			'tipo_pago' => 'Transferencia',
 			'Mes' => 'Enero',

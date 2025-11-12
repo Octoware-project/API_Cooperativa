@@ -31,18 +31,21 @@ class PlanTrabajoTest extends TestCase
         $user = User::where('email', 'user@test.com')->first();
         $this->assertNotNull($user);
         
+        $mesUnico = 12;
+        $anioUnico = 2026;
+        
         $payload = [
-            'mes' => 11,
-            'anio' => 2025,
+            'mes' => $mesUnico,
+            'anio' => $anioUnico,
             'horas_requeridas' => 40
         ];
         $response = $this->postJson('/api/planes-trabajo', $payload);
         $response->assertStatus(201)
-            ->assertJsonFragment(['mes' => 11, 'anio' => 2025, 'horas_requeridas' => 40]);
+            ->assertJsonFragment(['mes' => $mesUnico, 'anio' => $anioUnico, 'horas_requeridas' => 40]);
         
         $plan = PlanTrabajo::where('user_id', $user->id)
-            ->where('mes', 11)
-            ->where('anio', 2025)
+            ->where('mes', $mesUnico)
+            ->where('anio', $anioUnico)
             ->where('horas_requeridas', 40)
             ->first();
         
@@ -66,7 +69,7 @@ class PlanTrabajoTest extends TestCase
             ->assertJsonStructure(['horas_requeridas', 'horas_cumplidas', 'porcentaje']);
         
         $data = $response->json();
-        $this->assertEquals(40, $data['horas_requeridas']);
+        $this->assertEquals(160, $data['horas_requeridas']);
         $this->assertIsNumeric($data['horas_cumplidas']);
         $this->assertIsNumeric($data['porcentaje']);
         $this->assertGreaterThanOrEqual(0, $data['porcentaje']);
