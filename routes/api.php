@@ -15,22 +15,23 @@ Route::middleware([Autenticacion::class])->group(function () {
     Route::post('/planes-trabajo', [PlanTrabajoController::class, 'store']);
     Route::get('/planes-trabajo/{id}/progreso', [PlanTrabajoController::class, 'progreso']);
 
-    Route::get('/horas/usuario', [Horas_MensualesController::class, 'listarHorasPorUsuario']);
-    Route::get('/horas', [Horas_MensualesController::class, "Index"]);
+    // Rutas para Horas Mensuales
+    Route::get('/horas', [Horas_MensualesController::class, "index"]);
     Route::get('/horas/ultimo-mes', [Horas_MensualesController::class, 'sumarHorasUltimoMes']);
-    Route::get('/horas/{id}', [Horas_MensualesController::class, "Detalle"]);
-
-    // Reemplaza AgregarHorasRegistradas por agregarHoras y AgregarJustificacion por agregarJustificacion
-    Route::post('/horas', [Horas_MensualesController::class, "agregarHoras"]);
-    Route::post('/horas/calcular', [Horas_MensualesController::class, "CalcularHorasRegistradas"]);
-    Route::post('/horas/justificacion', [Horas_MensualesController::class, "AgregarJustificacion"]);
-    Route::delete('/horas/{id}', [Horas_MensualesController::class, "EliminarHoras"]);
+    Route::post('/horas', [Horas_MensualesController::class, "store"]);
+    Route::post('/horas/calcular', [Horas_MensualesController::class, "calcularHorasRegistradas"]);
+    Route::post('/horas/justificacion', [Horas_MensualesController::class, "agregarJustificacion"]);
+    Route::get('/horas/{id}', [Horas_MensualesController::class, "show"]);
+    Route::put('/horas/{id}', [Horas_MensualesController::class, "update"]);
+    Route::delete('/horas/{id}', [Horas_MensualesController::class, "destroy"]);
 
     // Rutas para Facturas
-    Route::post('/facturas', [FacturasController::class, 'AgregarFactura']);
-    Route::get('/facturas/{id}', [FacturasController::class, 'Detalle']);
-    Route::delete('/facturas/{id}', [FacturasController::class, 'CancelarFactura']);
-    Route::get('/facturas', [FacturasController::class, 'ListarFacturasPorUsuario']);
+    Route::post('/facturas', [FacturasController::class, 'agregarFactura']);
+    Route::get('/facturas/{id}', [FacturasController::class, 'detalle']);
+    Route::get('/facturas/{id}/url-comprobante', [FacturasController::class, 'urlComprobante']);
+    Route::get('/facturas/{id}/comprobante', [FacturasController::class, 'servirComprobante']);
+    Route::delete('/facturas/{id}', [FacturasController::class, 'cancelarFactura']);
+    Route::get('/facturas', [FacturasController::class, 'listarFacturasPorUsuario']);
     Route::post('/facturas/filtrar', [FacturasController::class, 'filtrarFacturas']);
 
 

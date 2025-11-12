@@ -15,8 +15,10 @@ return new class extends Migration
 			$table->integer('anio');
 			$table->integer('horas_requeridas');
 			$table->timestamps();
+			$table->softDeletes(); // Agregar soporte para soft deletes
 
-			$table->foreign('user_id')->references('id')->on('users');
+			// Comentamos la foreign key ya que no tenemos tabla users en esta API
+			// $table->foreign('user_id')->references('id')->on('users');
 			$table->unique(['user_id', 'mes', 'anio']);
 		});
 	}

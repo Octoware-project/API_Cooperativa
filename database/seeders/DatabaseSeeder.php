@@ -13,8 +13,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-    // Llamar al seeder de facturas y pagos
-    $this->call(Facturas_y_Pagos::class);
-    $this->call(HorasMensualesSeeder::class);
+
     }
 }

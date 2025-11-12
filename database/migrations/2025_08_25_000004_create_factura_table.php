@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string("Archivo_Comprobante")->nullable();
             $table->string("Estado_Pago")->nullable();
             $table->string("tipo_pago")->nullable();
+            $table->string('fecha_pago')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
