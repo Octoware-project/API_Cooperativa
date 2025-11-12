@@ -5,16 +5,15 @@ use Illuminate\Http\Request;
 use App\Models\Factura;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class FacturasController extends Controller
 {
-    // Array constante para los meses
     private const MESES = [
         'Enero'=>1,'Febrero'=>2,'Marzo'=>3,'Abril'=>4,'Mayo'=>5,'Junio'=>6,
         'Julio'=>7,'Agosto'=>8,'Septiembre'=>9,'Octubre'=>10,'Noviembre'=>11,'Diciembre'=>12
     ];
 
-    // Devuelve el detalle de una factura por ID
     public function detalle(Request $request, $id)
     {
         try {
@@ -23,7 +22,6 @@ class FacturasController extends Controller
                              ->where('email', $email)
                              ->firstOrFail();
             
-            // Devolver la URL del endpoint de comprobante en lugar de storage directo
             if ($factura->Archivo_Comprobante) {
                 $factura->imagen_comprobante = url("api/facturas/{$id}/comprobante");
             } else {
@@ -35,56 +33,61 @@ class FacturasController extends Controller
             return response()->json(['error' => 'Factura no encontrada o sin permisos'], 404);
         }
     }
-    // Filtro flexible por mes y año sobre created_at
     public function filtrarFacturas(Request $request)
     {
-        $email = $request->user['email'];
-        $mes = $request->input('mes'); // Debe ser número (1-12) o null
-        $anio = $request->input('anio'); // Puede ser null
+        try {
+            $email = $request->user['email'];
+            $mes = $request->input('mes');
+            $anio = $request->input('anio');
 
-        $query = Factura::where('email', $email);
+            $query = Factura::where('email', $email);
 
-        if (!empty($mes)) {
-            $mesNum = intval($mes);
-            if ($mesNum >= 1 && $mesNum <= 12) {
-                $query->whereMonth('created_at', $mesNum);
+            if (!empty($mes)) {
+                $mesNum = intval($mes);
+                if ($mesNum >= 1 && $mesNum <= 12) {
+                    $query->whereMonth('created_at', $mesNum);
+                }
             }
-        }
-        if (!empty($anio)) {
-            $anioNum = intval($anio);
-            if ($anioNum > 1900 && $anioNum < 2100) {
-                $query->whereYear('created_at', $anioNum);
+            if (!empty($anio)) {
+                $anioNum = intval($anio);
+                if ($anioNum > 1900 && $anioNum < 2100) {
+                    $query->whereYear('created_at', $anioNum);
+                }
             }
-        }
 
-        $facturas = $query->orderBy('created_at', 'desc')->get();
-        return response()->json(['facturas' => $facturas], 200);
+            $facturas = $query->orderBy('created_at', 'desc')->get();
+            return response()->json(['facturas' => $facturas], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al filtrar facturas', 'mensaje' => $e->getMessage()], 500);
+        }
     }
-    // Filtra facturas por mes y año
     public function filtrarPorMesAnio(Request $request)
     {
-        $email = $request->user['email'];
-        $mesStr = $request->input('mes'); // string, por ejemplo 'Enero'
-        $anio = $request->input('anio');
-        
-        if (!$mesStr || !$anio) {
-            return response()->json(['error' => 'Debe enviar mes y año'], 400);
-        }
-        
-        $mes = self::MESES[$mesStr] ?? null;
-        if (!$mes) {
-            return response()->json(['error' => 'Mes inválido'], 400);
-        }
-        
-        $facturas = Factura::where('email', $email)
-            ->whereYear('created_at', $anio)
-            ->whereMonth('created_at', $mes)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        try {
+            $email = $request->user['email'];
+            $mesStr = $request->input('mes');
+            $anio = $request->input('anio');
             
-        return response()->json(['facturas' => $facturas], 200);
+            if (!$mesStr || !$anio) {
+                return response()->json(['error' => 'Debe enviar mes y año'], 400);
+            }
+            
+            $mes = self::MESES[$mesStr] ?? null;
+            if (!$mes) {
+                return response()->json(['error' => 'Mes inválido'], 400);
+            }
+            
+            $facturas = Factura::where('email', $email)
+                ->whereYear('created_at', $anio)
+                ->whereMonth('created_at', $mes)
+                ->orderBy('created_at', 'desc')
+                ->get();
+                
+            return response()->json(['facturas' => $facturas], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al filtrar facturas por mes y año', 'mensaje' => $e->getMessage()], 500);
+        }
     }
-    // Cancela una factura por ID
     public function cancelarFactura(Request $request, $id)
     {
         try {
@@ -104,24 +107,27 @@ class FacturasController extends Controller
         }
     }
    
-    // Lista todas las facturas del usuario autenticado
     public function listarFacturasPorUsuario(Request $request)
     {
-        $email = $request->user['email'];
-        $facturas = Factura::where('email', $email)->orderBy('created_at', 'desc')->get();
-        return response()->json(['facturas' => $facturas], 200);
+        try {
+            $email = $request->user['email'];
+            $facturas = Factura::where('email', $email)->orderBy('created_at', 'desc')->get();
+            return response()->json(['facturas' => $facturas], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al listar facturas', 'mensaje' => $e->getMessage()], 500);
+        }
     }
 
     public function agregarFactura(Request $request)
     {
         try {
-            // Validación de datos de entrada
             $validator = Validator::make($request->all(), [
                 'Monto' => 'required|numeric|min:0.01|max:999999.99',
                 'tipo_pago' => 'required|string|max:50',
                 'Mes' => 'required|string|in:' . implode(',', array_keys(self::MESES)),
                 'Anio' => 'required|integer|min:2000|max:2100',
                 'Estado_Pago' => 'nullable|string|in:Pendiente,Aceptado,Rechazado',
+                'motivo' => 'required|string|min:5|max:500',
                 'Archivo_Comprobante' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:5120' // Solo imágenes y PDF, 5MB max
             ]);
 
@@ -137,26 +143,56 @@ class FacturasController extends Controller
             $mesStr = $request->input('Mes');
             $anio = $request->input('Anio');
 
-            // Crear nueva factura
             $factura = new Factura();
             $factura->email = $email;
             $factura->Monto = $monto;
             $factura->tipo_pago = $request->input('tipo_pago');
             $factura->Estado_Pago = $request->input('Estado_Pago', 'Pendiente');
+            $factura->motivo = $request->input('motivo');
 
-            // Manejar archivo comprobante
             if ($request->hasFile('Archivo_Comprobante')) {
-                $path = $request->file('Archivo_Comprobante')->store('comprobantes', 'public');
-                $factura->Archivo_Comprobante = $path;
+                $file = $request->file('Archivo_Comprobante');
+                
+                // Validar que el archivo sea válido
+                if ($file->isValid()) {
+                    // Generar nombre único con extensión original
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = uniqid('comprobante_') . '.' . $extension;
+                    
+                    // Guardar el archivo
+                    $path = $file->storeAs('comprobantes', $filename, 'public');
+                    $factura->Archivo_Comprobante = $path;
+                    
+                    // Log para debugging
+                    Log::info('Archivo guardado exitosamente', [
+                        'path' => $path,
+                        'size' => $file->getSize(),
+                        'mime' => $file->getMimeType(),
+                        'original_name' => $file->getClientOriginalName()
+                    ]);
+                } else {
+                    Log::error('Archivo inválido recibido');
+                    return response()->json([
+                        'error' => 'El archivo recibido no es válido'
+                    ], 400);
+                }
             } else {
                 $factura->Archivo_Comprobante = null;
+                Log::warning('No se recibió archivo de comprobante');
             }
 
-            // Asignar fecha_pago según Mes y Anio del request
             $mes = self::MESES[$mesStr];
             $factura->fecha_pago = \Carbon\Carbon::create($anio, $mes, 1)->toDateString();
 
+            // Establecer created_at con el mes y año seleccionados
+            $fechaCreacion = \Carbon\Carbon::create($anio, $mes, 1);
+            $factura->created_at = $fechaCreacion;
+            $factura->updated_at = $fechaCreacion;
+
+            // Desactivar timestamps temporalmente para que Laravel no los sobrescriba
+            $factura->timestamps = false;
             $factura->save();
+            $factura->timestamps = true;
 
             return response()->json([
                 'success' => true,
@@ -167,6 +203,7 @@ class FacturasController extends Controller
                     'tipo_pago' => $factura->tipo_pago,
                     'estado_pago' => $factura->Estado_Pago,
                     'fecha_pago' => $factura->fecha_pago,
+                    'motivo' => $factura->motivo,
                     'archivo_comprobante' => $factura->Archivo_Comprobante
                 ]
             ], 201);
@@ -179,7 +216,6 @@ class FacturasController extends Controller
         }
     }
 
-    // Devuelve la URL del comprobante para acceso directo
     public function urlComprobante(Request $request, $id)
     {
         try {
@@ -192,7 +228,6 @@ class FacturasController extends Controller
                 return response()->json(['error' => 'No hay comprobante disponible'], 404);
             }
 
-            // Generar URL completa del comprobante
             $url = url('storage/' . ltrim($factura->Archivo_Comprobante, '/'));
             
             return response()->json([
@@ -206,11 +241,16 @@ class FacturasController extends Controller
         }
     }
 
-    // Sirve el archivo comprobante directamente con autenticación (para frontend)
     public function servirComprobante(Request $request, $id)
     {
         try {
-            $email = $request->user['email'];
+            // Obtener email del usuario autenticado
+            $email = $request->user['email'] ?? null;
+            
+            if (!$email) {
+                abort(403, 'No autorizado');
+            }
+            
             $factura = Factura::where('id', $id)
                              ->where('email', $email)
                              ->firstOrFail();
@@ -225,20 +265,47 @@ class FacturasController extends Controller
                 abort(404, 'Archivo no encontrado');
             }
 
-            $mimeType = mime_content_type($filePath);
+            // Determinar tipo MIME correcto basado en la extensión
+            $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+            $mimeTypes = [
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'pdf' => 'application/pdf',
+                'webp' => 'image/webp'
+            ];
+            
+            $mimeType = $mimeTypes[$extension] ?? mime_content_type($filePath);
             $fileName = basename($factura->Archivo_Comprobante);
 
-            return response()->file($filePath, [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => 'inline; filename="' . $fileName . '"'
-            ]);
+            $isDownload = $request->query('download', false);
+            $disposition = $isDownload ? 'attachment' : 'inline';
+            
+            // Limpiar cualquier salida previa que pueda corromper el archivo
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            // Leer archivo binario
+            $fileContent = file_get_contents($filePath);
+            
+            return response($fileContent, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"')
+                ->header('Content-Length', strlen($fileContent))
+                ->header('Cache-Control', 'public, max-age=3600')
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept')
+                ->header('Access-Control-Expose-Headers', 'Content-Type, Content-Disposition, Content-Length')
+                ->header('Accept-Ranges', 'bytes');
 
         } catch (\Exception $e) {
             abort(404, 'Comprobante no encontrado');
         }
     }
 
-    // Endpoint público para descargar comprobantes (solo para admin/backoffice)
     public function descargarComprobante($id)
     {
         try {

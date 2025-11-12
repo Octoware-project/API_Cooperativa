@@ -1,17 +1,19 @@
-
 <?php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\Autenticacion;
 use App\Http\Controllers\Horas_MensualesController;
 use App\Http\Controllers\FacturasController;
 use App\Http\Controllers\PlanTrabajoController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\AsambleasController;
+use App\Http\Controllers\UnidadHabitacionalController;
 
 Route::middleware([Autenticacion::class])->group(function () {
    
     // Rutas para Plan de Trabajo
     Route::get('/planes-trabajo', [PlanTrabajoController::class, 'index']);
+    Route::get('/planes-trabajo/dashboard', [PlanTrabajoController::class, 'dashboard']);
     Route::post('/planes-trabajo', [PlanTrabajoController::class, 'store']);
     Route::get('/planes-trabajo/{id}/progreso', [PlanTrabajoController::class, 'progreso']);
 
@@ -34,5 +36,20 @@ Route::middleware([Autenticacion::class])->group(function () {
     Route::get('/facturas', [FacturasController::class, 'listarFacturasPorUsuario']);
     Route::post('/facturas/filtrar', [FacturasController::class, 'filtrarFacturas']);
 
+    // Rutas para gestión de usuarios
+    Route::post('/completar-datos', [UserController::class, 'completarDatos']);
+    Route::post('/editar-datos-persona', [UserController::class, 'editarDatosPersona']);
+    Route::get('/datos-usuario', [UserController::class, 'obtenerDatosUsuario']);
+    Route::post('/cambiar-contrasena', [UserController::class, 'cambiarContrasena']);
+
+    // Rutas para Asambleas
+    Route::get('/asambleas', [AsambleasController::class, 'index']);
+    Route::get('/asambleas/{id}', [AsambleasController::class, 'show']);
+    Route::get('/asambleas-futuras', [AsambleasController::class, 'futuras']);
+    Route::get('/asambleas-pasadas', [AsambleasController::class, 'pasadas']);
+
+    // Rutas para Unidades Habitacionales
+    Route::get('/mi-unidad', [UnidadHabitacionalController::class, 'miUnidad']);
+    Route::get('/mi-unidad/residentes', [UnidadHabitacionalController::class, 'residentesDeUnidad']);
 
 });

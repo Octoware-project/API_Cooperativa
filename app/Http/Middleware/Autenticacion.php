@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Closure;
@@ -13,12 +12,20 @@ class Autenticacion
     public function handle(Request $request, Closure $next): Response
     {
         if (app()->environment('testing')) {
-            // Simula usuario autenticado en tests
-            $request->merge(['user' => [
-                'email' => 'test@example.com',
-                'name' => 'Test User',
-                'id' => 1
-            ]]);
+            $user = \App\Models\User::where('email', 'user@test.com')->first();
+            if ($user) {
+                $request->merge(['user' => [
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'id' => $user->id
+                ]]);
+            } else {
+                $request->merge(['user' => [
+                    'email' => 'user@test.com',
+                    'name' => 'Test User',
+                    'id' => 1
+                ]]);
+            }
             return $next($request);
         }
 
@@ -30,7 +37,7 @@ class Autenticacion
             'Authorization' => $token,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json'
-        ])->get('http://127.0.0.1:8000/api/validate'); // apunta a la API de Usuarios
+        ])->get('http://127.0.0.1:8000/api/validate');
 
         if($validacion->status() != 200)
             return response()->json(["error" => "Invalid Token"],401);
